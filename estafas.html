@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detector de estafas — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="Señales de alerta específicas para el mercado inmobiliario de Ciudad de Guatemala. Compra y alquiler.">
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.es-wrap { padding-top: var(--nav-h); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.es-hero { padding: 40px 40px 28px; border-bottom: var(--border-soft); }
+.es-eyebrow { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.es-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.es-title { font-size:clamp(26px,3.5vw,40px); font-weight:700; letter-spacing:-0.03em; line-height:1.05; margin-bottom:10px; }
+.es-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:560px; }
+
+/* ── Nota legal ───────────────────────────────────────────────── */
+.es-nota-legal {
+  margin: 0; padding: 14px 40px;
+  background: var(--gray-100); border-bottom: var(--border-soft);
+  font-size:11px; color:var(--gray-600); line-height:1.7; font-weight:500;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.es-nota-legal-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+
+/* ── Toggle ───────────────────────────────────────────────────── */
+.es-toggle {
+  display: flex; border-bottom: 1.5px solid var(--black); flex-shrink:0;
+}
+.es-tab {
+  padding: 16px 32px; font-family:var(--font); font-size:11px; font-weight:700;
+  letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  border:none; background:var(--white); color:var(--gray-500); transition:var(--trans);
+  border-bottom: 2px solid transparent; margin-bottom:-2px;
+}
+.es-tab:first-child { border-right: var(--border-soft); }
+.es-tab.active { color:var(--black); border-bottom-color:var(--black); }
+
+/* ── Body ─────────────────────────────────────────────────────── */
+.es-body { flex:1; padding: 0 40px 48px; }
+
+/* ── Sección de alertas ───────────────────────────────────────── */
+.es-section { display:none; padding-top: 36px; }
+.es-section.active { display: block; }
+
+.es-section-intro {
+  font-size:13px; color:var(--gray-700); line-height:1.75;
+  max-width:680px; margin-bottom:36px;
+  padding-bottom:24px; border-bottom: var(--border-soft);
+}
+
+/* Contador de alertas */
+.es-counter {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 28px;
+}
+.es-counter-num {
+  font-size:32px; font-weight:700; letter-spacing:-0.03em;
+  border-bottom: 1.5px solid var(--gray-300);
+  display:inline-block; padding-bottom:2px;
+}
+.es-counter-lbl { font-size:11px; font-weight:600; color:var(--gray-500); letter-spacing:0.05em; text-transform:uppercase; }
+
+/* Grid de señales */
+.es-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1px;
+  background: var(--gray-300);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 36px;
+}
+
+.es-card {
+  background: var(--white);
+  padding: 20px 22px;
+  cursor: pointer;
+  transition: background 0.12s;
+  display: flex; flex-direction: column; gap: 0;
+}
+.es-card:hover { background: var(--gray-100); }
+.es-card.expanded { background: var(--gray-100); }
+
+.es-card-header {
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.es-card-icon {
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink:0; margin-top:1px;
+  background: #fff0f0; border: 1px solid #fcc;
+}
+.es-card-title-wrap { flex:1; }
+.es-card-num {
+  font-size:9px; font-weight:700; color:var(--gray-400);
+  letter-spacing:0.07em; text-transform:uppercase; margin-bottom:4px;
+}
+.es-card-title {
+  font-size:13px; font-weight:700; color:var(--black);
+  line-height:1.3;
+}
+.es-card-arrow {
+  font-size:11px; color:var(--gray-400); flex-shrink:0;
+  transition: transform 0.2s; margin-top:3px;
+}
+.es-card.expanded .es-card-arrow { transform: rotate(180deg); }
+
+.es-card-body {
+  display: none;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--border-soft);
+  flex-direction: column;
+  gap: 12px;
+}
+.es-card.expanded .es-card-body { display: flex; }
+
+.es-card-desc {
+  font-size:12px; color:var(--gray-700); line-height:1.7; font-weight:400;
+}
+
+.es-card-alerta-label {
+  font-size:9px; font-weight:700; color:#c0392b;
+  letter-spacing:0.07em; text-transform:uppercase; margin-bottom:4px;
+}
+.es-card-alerta-text {
+  font-size:12px; color:#7b1a1a; line-height:1.65;
+  background: #fff5f5; border-left: 3px solid #c0392b;
+  padding: 8px 12px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.es-card-hacer-label {
+  font-size:9px; font-weight:700; color:var(--black);
+  letter-spacing:0.07em; text-transform:uppercase; margin-bottom:4px;
+}
+.es-card-hacer-text {
+  font-size:12px; color:var(--gray-700); line-height:1.65;
+  background: var(--gray-100); border-left: 3px solid var(--black);
+  padding: 8px 12px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ── Bloque final ─────────────────────────────────────────────── */
+.es-final {
+  background: var(--black); border-radius: var(--radius-lg);
+  padding: 24px 28px; margin-bottom: 36px;
+}
+.es-final-title { font-size:16px; font-weight:700; color:var(--white); margin-bottom:8px; letter-spacing:-0.01em; }
+.es-final-text { font-size:12px; color:#888; line-height:1.75; }
+.es-final-text strong { color:#ccc; }
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.es-footer { background:var(--black); padding:28px 40px; flex-shrink:0; }
+.es-footer-headline { font-size:20px; font-weight:700; color:var(--white); letter-spacing:-0.02em; margin-bottom:6px; }
+.es-footer-sub { font-size:12px; color:#555; font-style:italic; margin-bottom:20px; }
+.es-footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #1e1e1e; flex-wrap:wrap; gap:10px; }
+.es-footer-meta { font-size:11px; color:#555; font-weight:500; }
+.es-footer-link { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--white); color:var(--black); font-size:11px; font-weight:500; border-radius:var(--radius-md); text-decoration:none; }
+
+@media (max-width:680px) {
+  .es-hero { padding:28px 20px 20px; }
+  .es-nota-legal { padding:12px 20px; }
+  .es-body { padding:0 20px 36px; }
+  .es-tab { padding:14px 20px; }
+  .es-grid { grid-template-columns:1fr; }
+  .es-footer { padding:24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation">
+  <a class="nav-logo" href="index.html">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod active" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="es-wrap">
+
+  <div class="es-hero">
+    <div class="es-eyebrow">Herramienta · Detector de alertas</div>
+    <h1 class="es-title">Señales de alerta en el mercado.</h1>
+    <p class="es-sub">Patrones específicos del mercado inmobiliario de Guatemala que conviene conocer antes de firmar cualquier cosa. No es paranoia — es información.</p>
+  </div>
+
+  <div class="es-nota-legal">
+    <span class="es-nota-legal-icon">(!)</span>
+    <span>Esta herramienta es educativa. No es asesoría legal ni reemplaza a un abogado. Si identificás varias señales de alerta en una misma operación, lo más recomendable es consultar con un abogado de tu confianza antes de proceder.</span>
+  </div>
+
+  <div class="es-toggle">
+    <button class="es-tab active" id="tab-compra" onclick="setTab('compra')">Compra</button>
+    <button class="es-tab" id="tab-alquiler" onclick="setTab('alquiler')">Alquiler</button>
+  </div>
+
+  <div class="es-body">
+
+    <!-- ══ COMPRA ══ -->
+    <div class="es-section active" id="sec-compra">
+
+      <p class="es-section-intro">
+        Comprar un inmueble en Guatemala requiere cuidado específico. El Registro de la Propiedad es público y consultable, pero eso no elimina el riesgo — hay estafas que pasan el filtro registral y otras que explotan el desconocimiento del comprador. Estas son las señales más frecuentes en el mercado local.
+      </p>
+
+      <div class="es-counter">
+        <span class="es-counter-num">9</span>
+        <span class="es-counter-lbl">señales de alerta · compra</span>
+      </div>
+
+      <div class="es-grid" id="grid-compra"></div>
+
+      <div class="es-final">
+        <div class="es-final-title">La regla de oro en compra</div>
+        <div class="es-final-text">
+          Antes de firmar cualquier contrato o entregar cualquier dinero: <strong>consultá el Registro de la Propiedad</strong> (registropropiedades.gob.gt) y verificá que el vendedor sea el propietario registrado, que no haya gravámenes, y que la descripción coincida. Ese paso no cuesta nada y puede salvarte de una estafa. Si el vendedor se opone a que consultes el registro — esa ya es una señal de alerta.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ ALQUILER ══ -->
+    <div class="es-section" id="sec-alquiler">
+
+      <p class="es-section-intro">
+        El alquiler en Guatemala no tiene una ley específica que lo regule de forma exhaustiva — lo que no está en el contrato, no existe. Eso deja mucho espacio para abusos y malentendidos. Estas son las señales más frecuentes en el mercado local de arrendamiento.
+      </p>
+
+      <div class="es-counter">
+        <span class="es-counter-num">8</span>
+        <span class="es-counter-lbl">señales de alerta · alquiler</span>
+      </div>
+
+      <div class="es-grid" id="grid-alquiler"></div>
+
+      <div class="es-final">
+        <div class="es-final-title">La regla de oro en alquiler</div>
+        <div class="es-final-text">
+          <strong>Todo por escrito, todo firmado, todo con fecha.</strong> En Guatemala el contrato de arrendamiento es casi lo único que te protege como inquilino. Si algo no está en el contrato — el monto del depósito, las condiciones de devolución, quién paga qué — va a ser muy difícil reclamarlo después. Un contrato bien redactado vale más que cualquier promesa verbal, por más amigable que sea el propietario.
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="es-footer">
+    <div class="es-footer-headline">explorar. contrastar. decidir.</div>
+    <div class="es-footer-sub">Per experimentum.</div>
+    <div class="es-footer-bottom">
+      <span class="es-footer-meta">( UMBRAL ) · Ciudad de Guatemala · 2025–2027</span>
+      <a class="es-footer-link" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+        <span>umbralgt.com</span><span>↗</span>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Detector de Alertas
+// Patrones específicos del mercado inmobiliario guatemalteco.
+// ══════════════════════════════════════════════════════════════
+
+const ALERTAS_COMPRA = [
+  {
+    titulo: 'Doble venta del mismo inmueble',
+    desc: 'El vendedor vende el mismo inmueble a dos o más compradores distintos, cobrando a todos. Ocurre especialmente con terrenos y proyectos en pre-venta donde el comprador aún no tiene escritura.',
+    alerta: 'Si el vendedor apura el cierre, pide no registrar la operación de inmediato, o hay inconsistencias entre lo que dice y lo que muestra el registro — hay riesgo de doble venta.',
+    hacer: 'Consultá el Registro de la Propiedad antes de entregar cualquier dinero. Pedí que el contrato de arras prohíba expresamente cualquier otra venta o gravamen durante el proceso. Inscribí la operación en el registro lo antes posible.',
+  },
+  {
+    titulo: 'Título supletorio falso o cuestionable',
+    desc: 'Los títulos supletorios son un mecanismo legal guatemalteco para regularizar propiedades sin escritura. Son legítimos, pero también son uno de los documentos más fáciles de falsificar o de obtener fraudulentamente sobre terrenos ya ocupados o con propietario.',
+    alerta: 'Desconfiá de terrenos que solo tienen título supletorio como respaldo, especialmente si son de bajo precio, están en zonas periféricas, o el vendedor no puede explicar con claridad el historial del terreno.',
+    hacer: 'Antes de comprar un terreno con título supletorio, contratá un abogado que verifique la autenticidad del título en el Registro de la Propiedad y confirme que no hay disputas o posesiones previas.',
+  },
+  {
+    titulo: 'Proyecto en pre-venta que no arranca',
+    desc: 'El desarrollador vende apartamentos o casas que "están en planos" pero que nunca inician construcción, o que se paralizan después de recibir los enganches. Guatemala no tiene un fideicomiso obligatorio para fondos de pre-venta.',
+    alerta: 'Proyectos sin permisos municipales visibles, desarrolladores sin proyectos terminados que mostrar, promesas de fecha de entrega sin penalización contractual por incumplimiento, y ausencia de garantía bancaria o fideicomiso son señales serias.',
+    hacer: 'Verificá que el proyecto tenga licencia de construcción de la Municipalidad antes de pagar cualquier enganche. Pedí referencias de proyectos anteriores del mismo desarrollador. Exigí que el contrato incluya penalización por incumplimiento de entrega y condiciones claras de devolución si el proyecto no arranca.',
+  },
+  {
+    titulo: 'Poder especial fraudulento',
+    desc: 'El "vendedor" no es el propietario real — actúa con un poder especial que puede ser falso, vencido, revocado, o que no incluye facultades para vender. Es una de las estafas más comunes en Guatemala porque el comprador asume que el notario verificó todo.',
+    alerta: 'Si el vendedor dice actuar "en representación de" alguien que no está presente, pedí ver el poder especial original, verificá que esté vigente, que incluya expresamente facultades de venta, y consultá con tu propio abogado — no el del vendedor.',
+    hacer: 'Pedí una copia del poder especial y llevala a un abogado de tu confianza. Verificá en el archivo de protocolos notariales que el documento exista. Si hay cualquier duda sobre la validez del poder, no procedás hasta tener certeza.',
+  },
+  {
+    titulo: 'Precio muy por debajo del mercado',
+    desc: 'Una propiedad que cuesta significativamente menos que propiedades similares en la misma zona puede tener problemas legales, gravámenes, disputas de herencia, ocupantes ilegales, o ser parte de una estafa. El precio irreal es una señal, no una oportunidad.',
+    alerta: 'Si el precio es más de un 25-30% menor a la mediana del mercado sin una razón clara y verificable, investigá antes de entusiasmarte.',
+    hacer: 'Usá el módulo de Precio Justo para comparar contra el mercado real de la zona. Si el precio sigue siendo muy bajo, preguntá directamente por qué — y verificá la respuesta de forma independiente antes de avanzar.',
+  },
+  {
+    titulo: 'Presión para firmar sin tiempo de revisar',
+    desc: '"Hay otro comprador interesado", "la oferta vence hoy", "el dueño necesita el dinero urgente". La presión artificial de tiempo es una técnica clásica para que el comprador no revise los documentos con cuidado.',
+    alerta: 'Cualquier vendedor que no te dé tiempo razonable para revisar el contrato con tu abogado — al menos 3-5 días hábiles — está creando condiciones para que firmes algo sin entenderlo.',
+    hacer: 'No firmés nada bajo presión de tiempo. Un buen negocio no desaparece en 24 horas. Si el vendedor retira la oferta porque pedís tiempo para revisar, probablemente te estás salvando de un problema mayor.',
+  },
+  {
+    titulo: 'Gravámenes, hipotecas o embargos no declarados',
+    desc: 'El inmueble tiene hipotecas activas, embargos judiciales, o anotaciones que el vendedor no mencionó. Al comprar, esas cargas pasan al nuevo propietario.',
+    alerta: 'El vendedor que evita mostrar la certificación registral actualizada, o que dice "está en proceso de cancelarse", está ocultando información que afecta directamente el valor y la libre disposición del inmueble.',
+    hacer: 'Pedí una certificación registral reciente (menos de 30 días) directamente al Registro de la Propiedad. Verificá que no haya hipotecas, embargos, anotaciones o limitaciones. Que el vendedor diga que "ya se canceló" no es suficiente — tiene que estar inscrito.',
+  },
+  {
+    titulo: 'Contrato con cláusulas de no devolución abusivas',
+    desc: 'El contrato de arras o promesa de venta incluye cláusulas que le permiten al vendedor quedarse con el enganche en situaciones desproporcionadas — por ejemplo, si el banco no aprueba el crédito, si aparecen problemas legales del inmueble, o si el vendedor incumple.',
+    alerta: 'Cláusulas que digan "en ningún caso se devolverá el enganche" sin importar la causa, o que pongan toda la carga del incumplimiento sobre el comprador, son señales de un contrato desequilibrado.',
+    hacer: 'Pedí que el contrato incluya causales claras de devolución del enganche — especialmente si el banco no aprueba el crédito o si aparecen problemas legales del inmueble que no fueron declarados. Revisá el contrato con un abogado antes de firmar.',
+  },
+  {
+    titulo: 'Desarrollador o vendedor sin historial verificable',
+    desc: 'El desarrollador no tiene proyectos terminados que mostrar, no tiene presencia física verificable, ni referencias de compradores anteriores. En Guatemala operan empresas de papel que venden proyectos sin capacidad real de ejecutarlos.',
+    alerta: 'Si el único respaldo del proyecto es material de marketing y promesas verbales, sin proyectos entregados previos, sin oficina física verificable, y sin referencias de compradores anteriores — el riesgo es alto.',
+    hacer: 'Pedí visitar proyectos anteriores del mismo desarrollador y hablar con propietarios de esos proyectos. Verificá que la empresa esté registrada en el SAT y el Registro Mercantil. Buscá referencias independientes, no las que te da el mismo vendedor.',
+  },
+];
+
+const ALERTAS_ALQUILER = [
+  {
+    titulo: 'El "propietario" no puede demostrar serlo',
+    desc: 'La persona que alquila el inmueble no es el dueño registrado. Puede ser un inquilino subarrendando sin autorización, alguien con un poder que no incluye facultades de arrendamiento, o directamente alguien sin relación con la propiedad.',
+    alerta: 'Si quien alquila no puede mostrar escritura del inmueble a su nombre, o un poder especial con facultades de arrendamiento, hay riesgo de que el contrato sea nulo y el propietario real pueda pedirte que desalojés.',
+    hacer: 'Pedí ver la escritura o consultá el Registro de la Propiedad para verificar quién es el dueño. El nombre en el contrato de arrendamiento debe coincidir con el propietario registrado, o debe haber un poder especial válido.',
+  },
+  {
+    titulo: 'Piden depósito o renta sin contrato',
+    desc: '"Primero pagás, después firmamos el contrato." En Guatemala muchos arrendamientos se manejan informalmente, pero pagar sin contrato deja al inquilino sin ningún respaldo legal para reclamar devolución de depósito u otras condiciones.',
+    alerta: 'Cualquier pago anterior a la firma del contrato — depósito, primera renta, "reserva" — sin documento firmado es dinero en riesgo. Si el propietario no quiere firmar antes de recibir el dinero, hay un problema de fondo.',
+    hacer: 'No entregués ningún dinero sin contrato firmado. Que el contrato exista primero, y que el pago quede documentado con recibo que identifique concepto, monto, fecha y datos de quien recibe.',
+  },
+  {
+    titulo: 'Inmueble publicado por múltiples "propietarios"',
+    desc: 'El mismo apartamento o casa aparece publicado por personas distintas, con precios diferentes, o con información inconsistente. Esto puede indicar doble arrendamiento o una estafa donde varias personas pagan depósito por el mismo lugar.',
+    alerta: 'Si encontrás el mismo inmueble publicado en más de un lugar con datos distintos, o si varias personas te contactan como "el dueño", investigá antes de pagar cualquier cosa.',
+    hacer: 'Visitá el inmueble en persona antes de pagar. Verificá la identidad del propietario con la escritura. Si hay inconsistencias, no procedás.',
+  },
+  {
+    titulo: 'Renta muy por debajo del mercado',
+    desc: 'Una renta que es significativamente menor a la de inmuebles similares en la misma zona puede esconder problemas: el lugar tiene defectos graves, hay problemas legales, o es parte de una estafa para cobrar depósitos.',
+    alerta: 'Si el precio es más de un 30% menor al mercado sin una razón clara — inmueble vacío hace mucho tiempo, necesita reparaciones importantes, propietario apurado — investigá antes de emocionarte.',
+    hacer: 'Usá el módulo de Precio Justo y el Heatmap de Renta para comparar contra el mercado real de la zona. Visitá el inmueble en detalle antes de pagar cualquier cosa.',
+  },
+  {
+    titulo: 'Pago adelantado antes de mostrar el inmueble',
+    desc: '"Te mando las fotos, pero para apartar el lugar necesito que pagues primero." Especialmente común en publicaciones de Facebook donde el supuesto propietario dice estar fuera del país o en otra ciudad.',
+    alerta: 'Ningún arrendamiento legítimo requiere pago antes de que el inquilino vea el inmueble en persona. Esta modalidad es casi siempre una estafa — especialmente si el "propietario" no puede reunirse en persona.',
+    hacer: 'Nunca paguéss nada por un inmueble que no visitaste en persona. Si el propietario no puede o no quiere mostrarte el lugar, descartá la opción.',
+  },
+  {
+    titulo: 'Contrato sin condiciones claras de depósito',
+    desc: 'El contrato no especifica de cuánto es el depósito, en qué condiciones se devuelve, en qué plazo, y qué pasa si el propietario no lo devuelve. En Guatemala no hay ley que fije un plazo máximo de devolución — si no está en el contrato, no existe.',
+    alerta: 'Un contrato que dice "depósito de garantía" sin especificar monto, condiciones de devolución y plazo máximo deja al inquilino completamente desprotegido al momento de salir.',
+    hacer: 'Exigí que el contrato incluya: monto exacto del depósito, plazo máximo de devolución después de entregar el inmueble, condiciones bajo las cuales se puede retener parcial o totalmente, y el estado del inmueble al momento de entrar (hacé un inventario fotográfico firmado por ambas partes).',
+  },
+  {
+    titulo: 'Subarrendamiento sin autorización',
+    desc: 'El inquilino original subarrienda el inmueble sin permiso del propietario. El nuevo inquilino paga renta al subarrendatario, no al dueño — y si el propietario descubre la situación, puede rescindir el contrato y pedirle al subarrendatario que desaloje.',
+    alerta: 'Si quien te alquila no puede mostrarte el contrato original con el propietario, o si evita que te comuniqués directamente con el dueño del inmueble, preguntá directamente si tiene autorización para subarrendar.',
+    hacer: 'Antes de firmar con alguien que no es el propietario registrado, verificá que su contrato original incluya autorización expresa para subarrendar. Sin esa cláusula, tu contrato puede ser nulo.',
+  },
+  {
+    titulo: 'Condiciones unilaterales de ajuste de renta',
+    desc: 'El contrato permite al propietario subir la renta en cualquier momento, con poco aviso, o en porcentajes no definidos. Algunos contratos incluyen cláusulas de "ajuste por inflación" sin tope o sin fórmula clara.',
+    alerta: 'Frases como "la renta podrá ajustarse según las condiciones del mercado" o "el propietario podrá modificar la renta con 15 días de aviso" sin límite de porcentaje le dan control total al arrendante sin protección para el inquilino.',
+    hacer: 'Negociá que el contrato especifique el porcentaje máximo de ajuste anual, o que cualquier ajuste requiera acuerdo mutuo por escrito. Si el propietario no acepta ningún límite, evaluá si es el arrendamiento correcto para vos.',
+  },
+];
+
+// ── Render ─────────────────────────────────────────────────────
+function renderAlertas(data, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = data.map((alerta, i) => `
+    <div class="es-card" onclick="toggleCard(this)">
+      <div class="es-card-header">
+        <div class="es-card-icon">⚠</div>
+        <div class="es-card-title-wrap">
+          <div class="es-card-num">Alerta ${String(i+1).padStart(2,'0')}</div>
+          <div class="es-card-title">${alerta.titulo}</div>
+        </div>
+        <div class="es-card-arrow">▾</div>
+      </div>
+      <div class="es-card-body">
+        <p class="es-card-desc">${alerta.desc}</p>
+        <div>
+          <div class="es-card-alerta-label">Por qué es una alerta</div>
+          <div class="es-card-alerta-text">${alerta.alerta}</div>
+        </div>
+        <div>
+          <div class="es-card-hacer-label">Qué hacer si la ves</div>
+          <div class="es-card-hacer-text">${alerta.hacer}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleCard(card) {
+  card.classList.toggle('expanded');
+}
+
+function setTab(tab) {
+  document.getElementById('tab-compra').classList.toggle('active', tab === 'compra');
+  document.getElementById('tab-alquiler').classList.toggle('active', tab === 'alquiler');
+  document.getElementById('sec-compra').classList.toggle('active', tab === 'compra');
+  document.getElementById('sec-alquiler').classList.toggle('active', tab === 'alquiler');
+}
+
+renderAlertas(ALERTAS_COMPRA, 'grid-compra');
+renderAlertas(ALERTAS_ALQUILER, 'grid-alquiler');
+</script>
+</body>
+</html>

@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Qué zona es para mí? — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="No hay zonas mejores ni peores. Respondé 5 preguntas y descubrí los trade-offs reales entre las zonas que encajan con tu búsqueda.">
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.pf-wrap { padding-top: var(--nav-h); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Paleta Opción C — Editorial */
+:root {
+  --z1: #1b4332; /* verde oscuro */
+  --z2: #9b2226; /* rojo oscuro */
+  --z3: #023e8a; /* azul marino */
+  --z4: #7b2d8b; /* morado */
+  --z5: #b5451b; /* terracota */
+}
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.pf-hero { padding: 40px 40px 28px; border-bottom: var(--border-soft); }
+.pf-eyebrow { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.pf-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.pf-title { font-size:clamp(26px,3.5vw,40px); font-weight:700; letter-spacing:-0.03em; line-height:1.05; margin-bottom:10px; }
+.pf-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:520px; }
+
+/* ── Body ─────────────────────────────────────────────────────── */
+.pf-body { flex:1; display:grid; grid-template-columns:360px 1fr; overflow:hidden; }
+
+/* ── Preguntas ────────────────────────────────────────────────── */
+.pf-questions {
+  border-right: 1.5px solid var(--black);
+  overflow-y: auto; padding: 28px 24px 32px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.pf-q { display: flex; flex-direction: column; gap: 9px; }
+.pf-q-num { font-size:10px; font-weight:700; color:var(--gray-400); letter-spacing:0.07em; text-transform:uppercase; }
+.pf-q-label { font-size:14px; font-weight:700; color:var(--black); letter-spacing:-0.01em; line-height:1.25; }
+.pf-q-sub { font-size:11px; color:var(--gray-500); font-weight:500; line-height:1.55; }
+.pf-q-hint { font-size:10px; color:var(--gray-400); font-weight:500; }
+.pf-options { display:flex; flex-wrap:wrap; gap:6px; }
+.pf-opt {
+  padding: 7px 13px; font-size:11px; font-weight:600;
+  border: 1.5px solid var(--gray-300); border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--gray-600); background: var(--white);
+  transition: var(--trans); user-select: none; line-height:1;
+}
+.pf-opt:hover { border-color: var(--gray-500); color: var(--black); }
+.pf-opt.selected { border-color: var(--black); color: var(--black); background: var(--gray-100); }
+.pf-opt.multi.selected { border-style: solid; }
+.pf-divider { border:none; border-top: var(--border-soft); }
+.pf-actions { display:flex; gap:10px; padding-top:4px; }
+.pf-btn-analizar {
+  flex:1; padding:12px; border-radius:var(--radius-md);
+  border:none; background:var(--black); color:var(--white);
+  font-family:var(--font); font-size:12px; font-weight:700;
+  letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; transition:var(--trans);
+}
+.pf-btn-analizar:hover { opacity:0.85; }
+.pf-btn-reset {
+  padding:12px 16px; border-radius:var(--radius-md);
+  border: var(--border-soft); background:var(--white); color:var(--gray-600);
+  font-family:var(--font); font-size:11px; font-weight:600; cursor:pointer; transition:var(--trans);
+}
+.pf-btn-reset:hover { border-color:var(--black); color:var(--black); }
+.pf-disclaimer { font-size:11px; color:var(--gray-500); line-height:1.6; font-weight:500; padding-top:8px; border-top:var(--border-soft); }
+
+/* ── Resultado ────────────────────────────────────────────────── */
+.pf-result { overflow-y:auto; padding:28px 32px; display:flex; flex-direction:column; gap:24px; }
+.pf-placeholder {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; height:100%; text-align:center;
+  color:var(--gray-400); gap:14px; padding:40px;
+}
+.pf-placeholder-icon { font-size:28px; opacity:0.3; }
+.pf-placeholder-text { font-size:13px; font-weight:500; line-height:1.6; max-width:280px; }
+
+/* Header resultado */
+.pf-result-header { padding-bottom:20px; border-bottom: 1.5px solid var(--black); }
+.pf-result-label { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:8px; }
+.pf-result-title { font-size:20px; font-weight:700; letter-spacing:-0.02em; line-height:1.15; margin-bottom:6px; }
+.pf-result-sub { font-size:12px; color:var(--gray-700); line-height:1.65; }
+
+/* Radar + tabla */
+.pf-vis { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.section-label { font-size:9px; font-weight:700; color:var(--gray-400); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:10px; }
+.radar-wrap { background:var(--gray-100); border-radius:var(--radius-lg); padding:16px; display:flex; flex-direction:column; align-items:center; }
+.radar-legend { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-self:flex-start; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; color:var(--gray-700); }
+.ldot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Tabla */
+.pf-table-wrap { }
+table { width:100%; border-collapse:collapse; font-size:11px; }
+th { font-size:9px; font-weight:700; color:var(--gray-500); letter-spacing:0.06em; text-transform:uppercase; padding:6px 6px; text-align:center; border-bottom:1.5px solid var(--black); white-space:nowrap; }
+th:first-child { text-align:left; padding-left:0; }
+td { padding:7px 6px; text-align:center; border-bottom:var(--border-muted); vertical-align:middle; }
+td:first-child { text-align:left; padding-left:0; font-weight:700; font-size:11px; }
+.zname { display:flex; align-items:center; gap:7px; }
+.zdot { width:10px; height:10px; border-radius:50%; flex-shrink:0; display:inline-block; }
+.sc { border-radius:4px; padding:2px 7px; font-size:10px; font-weight:700; display:inline-block; }
+.sc-hi { background:var(--black); color:var(--white); }
+.sc-mi { background:var(--gray-200); color:var(--gray-700); }
+.sc-lo { background:var(--gray-100); color:var(--gray-400); border:1px solid var(--gray-300); }
+
+/* Precios referencia */
+.pf-precios { display:flex; flex-direction:column; gap:4px; margin-top:14px; }
+.pf-precio-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:var(--border-muted); font-size:11px; }
+.pf-precio-row:last-child { border-bottom:none; }
+.pf-precio-zona { display:flex; align-items:center; gap:7px; font-weight:600; }
+.pf-precio-val { font-weight:700; }
+
+/* Trade-offs */
+.pf-tradeoffs { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.to-block { border-radius:var(--radius-md); padding:14px 16px; border:1.5px solid; }
+.to-gana { border-color:var(--black); background:var(--white); }
+.to-cede { border-color:var(--gray-300); background:var(--gray-100); }
+.to-label { font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--gray-400); margin-bottom:8px; }
+.to-item { font-size:11px; font-weight:600; padding:4px 0; display:flex; align-items:flex-start; gap:8px; color:var(--gray-700); line-height:1.45; border-bottom:var(--border-muted); }
+.to-item:last-child { border-bottom:none; }
+.to-item.strong { color:var(--black); }
+.to-item.muted { color:var(--gray-400); }
+.to-arr { flex-shrink:0; margin-top:1px; font-style:normal; }
+
+/* Nota final */
+.pf-nota { font-size:11px; color:var(--gray-500); line-height:1.7; font-weight:500; padding-top:20px; border-top:var(--border-soft); }
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.pf-footer { background:var(--black); padding:28px 40px; flex-shrink:0; }
+.pf-footer-headline { font-size:20px; font-weight:700; color:var(--white); letter-spacing:-0.02em; margin-bottom:6px; }
+.pf-footer-sub { font-size:12px; color:#555; font-style:italic; margin-bottom:20px; }
+.pf-footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #1e1e1e; flex-wrap:wrap; gap:10px; }
+.pf-footer-meta { font-size:11px; color:#555; font-weight:500; }
+.pf-footer-link { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--white); color:var(--black); font-size:11px; font-weight:500; border-radius:var(--radius-md); text-decoration:none; }
+
+@media (max-width:900px) {
+  .pf-body { grid-template-columns:1fr; }
+  .pf-questions { border-right:none; border-bottom:1.5px solid var(--black); max-height:60vh; }
+  .pf-vis { grid-template-columns:1fr; }
+  .pf-tradeoffs { grid-template-columns:1fr; }
+  .pf-hero { padding:28px 20px 20px; }
+  .pf-questions { padding:20px; }
+  .pf-result { padding:20px; }
+  .pf-footer { padding:24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation">
+  <a class="nav-logo" href="index.html">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="pf-wrap">
+
+  <div class="pf-hero">
+    <div class="pf-eyebrow">Herramienta · Perfil de zona</div>
+    <h1 class="pf-title">¿Qué zona es para mí?</h1>
+    <p class="pf-sub">No hay zonas mejores ni peores — hay zonas que encajan mejor con cada perfil. Respondé 5 preguntas y el sistema te muestra los trade-offs reales entre las zonas que se alinean con lo que buscás.</p>
+  </div>
+
+  <div class="pf-body">
+
+    <!-- Preguntas -->
+    <div class="pf-questions">
+
+      <div class="pf-q">
+        <div class="pf-q-num">01</div>
+        <div class="pf-q-label">¿Para qué estás buscando?</div>
+        <div class="pf-options" data-q="proposito" data-multi="false">
+          <span class="pf-opt" data-val="vivir">Para vivir</span>
+          <span class="pf-opt" data-val="invertir">Para invertir</span>
+          <span class="pf-opt" data-val="ambos">Ambos</span>
+        </div>
+      </div>
+
+      <hr class="pf-divider">
+
+      <div class="pf-q">
+        <div class="pf-q-num">02</div>
+        <div class="pf-q-label">¿Cuál es tu presupuesto aproximado?</div>
+        <div class="pf-q-sub">En dólares, precio de compra total.</div>
+        <div class="pf-options" data-q="presupuesto" data-multi="false">
+          <span class="pf-opt" data-val="bajo">Menos de $150,000</span>
+          <span class="pf-opt" data-val="medio-bajo">$150,000 – $220,000</span>
+          <span class="pf-opt" data-val="medio-alto">$220,000 – $350,000</span>
+          <span class="pf-opt" data-val="alto">Más de $350,000</span>
+          <span class="pf-opt" data-val="renta">Solo renta</span>
+        </div>
+      </div>
+
+      <hr class="pf-divider">
+
+      <div class="pf-q">
+        <div class="pf-q-num">03</div>
+        <div class="pf-q-label">¿Tenés carro o dependés del transporte público?</div>
+        <div class="pf-options" data-q="movilidad" data-multi="false">
+          <span class="pf-opt" data-val="carro">Tengo carro</span>
+          <span class="pf-opt" data-val="transporte">Dependo del transporte</span>
+          <span class="pf-opt" data-val="ambos">Ambos según el día</span>
+        </div>
+      </div>
+
+      <hr class="pf-divider">
+
+      <div class="pf-q">
+        <div class="pf-q-num">04</div>
+        <div class="pf-q-label">¿Qué no tolerarías en tu zona?</div>
+        <div class="pf-q-hint">⟐ selección múltiple</div>
+        <div class="pf-options" data-q="no_tolera" data-multi="true">
+          <span class="pf-opt multi" data-val="inseguridad">Inseguridad</span>
+          <span class="pf-opt multi" data-val="sin_movilidad">Depender del carro</span>
+          <span class="pf-opt multi" data-val="ruido">Mucho ruido / tráfico</span>
+          <span class="pf-opt multi" data-val="construccion">Construcción activa alrededor</span>
+          <span class="pf-opt multi" data-val="poca_vida">Poca vida peatonal</span>
+        </div>
+      </div>
+
+      <hr class="pf-divider">
+
+      <div class="pf-q">
+        <div class="pf-q-num">05</div>
+        <div class="pf-q-label">¿Qué es lo más importante para vos?</div>
+        <div class="pf-q-hint">⟐ hasta 2 opciones</div>
+        <div class="pf-options" data-q="prioridad" data-multi="true" data-max="2">
+          <span class="pf-opt multi" data-val="seguridad">Seguridad</span>
+          <span class="pf-opt multi" data-val="conectividad">Conectividad</span>
+          <span class="pf-opt multi" data-val="calidad">Calidad de vida</span>
+          <span class="pf-opt multi" data-val="precio">Precio accesible</span>
+          <span class="pf-opt multi" data-val="inversion">Potencial de inversión</span>
+          <span class="pf-opt multi" data-val="tranquilidad">Tranquilidad y ambiente</span>
+        </div>
+      </div>
+
+      <div class="pf-actions">
+        <button class="pf-btn-analizar" onclick="analizar()">Ver trade-offs de mi perfil</button>
+        <button class="pf-btn-reset" onclick="resetear()">Reiniciar</button>
+      </div>
+
+      <div class="pf-disclaimer">
+        El análisis es orientativo y trabaja a nivel de zona — no captura variaciones de colonia, barrio o calle dentro de cada zona. Usalo como punto de partida para explorar, no como decisión final.
+      </div>
+    </div>
+
+    <!-- Resultado -->
+    <div class="pf-result" id="pf-result">
+      <div class="pf-placeholder">
+        <div class="pf-placeholder-icon">◑</div>
+        <div class="pf-placeholder-text">Respondé las preguntas y hacé clic en "Ver trade-offs" para ver qué zonas encajan con tu búsqueda y qué cedés en cada una.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="pf-footer">
+    <div class="pf-footer-headline">explorar. contrastar. decidir.</div>
+    <div class="pf-footer-sub">Per experimentum.</div>
+    <div class="pf-footer-bottom">
+      <span class="pf-footer-meta">( UMBRAL ) · Ciudad de Guatemala · 2025–2027</span>
+      <a class="pf-footer-link" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+        <span>umbralgt.com</span><span>↗</span>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Perfil de Zona · Filosofía B
+// Trade-offs reales — no rankings, no scores de match.
+// ══════════════════════════════════════════════════════════════
+
+// Paleta Opción C — Editorial
+const ZONA_COLORS = ['#1b4332','#9b2226','#023e8a','#7b2d8b','#b5451b'];
+
+const DIMS = [
+  { key:'seguridad',    label:'Seg.',   full:'Seguridad' },
+  { key:'conectividad', label:'Con.',   full:'Conectividad' },
+  { key:'calidad',      label:'Cal.',   full:'Calidad de vida' },
+  { key:'precios',      label:'Pre.',   full:'Precio' },
+  { key:'inversion',    label:'Inv.',   full:'Inversión' },
+  { key:'regulaciones', label:'Reg.',   full:'Regulaciones' },
+];
+
+let zonas = null;
+
+async function init() {
+  const res = await fetch('data/zonas.json');
+  zonas = await res.json();
+  setupOpts();
+}
+
+function setupOpts() {
+  document.querySelectorAll('.pf-options').forEach(group => {
+    const isMulti = group.dataset.multi === 'true';
+    const maxSel = parseInt(group.dataset.max || '99');
+    group.querySelectorAll('.pf-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (!isMulti) {
+          group.querySelectorAll('.pf-opt').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+        } else {
+          if (opt.classList.contains('selected')) {
+            opt.classList.remove('selected');
+          } else {
+            const sel = group.querySelectorAll('.pf-opt.selected').length;
+            if (sel < maxSel) opt.classList.add('selected');
+          }
+        }
+      });
+    });
+  });
+}
+
+function getAnswer(q) {
+  const group = document.querySelector(`[data-q="${q}"]`);
+  if (!group) return null;
+  const sel = [...group.querySelectorAll('.pf-opt.selected')].map(o => o.dataset.val);
+  return group.dataset.multi === 'true' ? sel : (sel[0] || null);
+}
+
+// ── Selección de zonas candidatas ──────────────────────────────
+function seleccionarZonas(answers) {
+  const { presupuesto, movilidad, no_tolera, prioridad } = answers;
+  const todas = Object.values(zonas).filter(z => z.mercado && z.mercado.precio_venta_mediana_usd);
+
+  return todas
+    .map(z => {
+      const s = z.scores;
+      const m = z.mercado;
+      let relevancia = 0;
+
+      // Presupuesto — filtro primario con rangos más precisos
+      const med = m.precio_venta_mediana_usd || 0;
+      if (presupuesto === 'bajo')       { if (med > 0 && med <= 180000) relevancia += 30; else if (med <= 220000) relevancia += 15; }
+      if (presupuesto === 'medio-bajo') { if (med >= 130000 && med <= 260000) relevancia += 30; else if (med < 130000 || med <= 300000) relevancia += 15; }
+      if (presupuesto === 'medio-alto') { if (med >= 180000 && med <= 380000) relevancia += 30; else if (med < 180000 || med <= 430000) relevancia += 15; }
+      if (presupuesto === 'alto')       { if (med >= 280000) relevancia += 30; else relevancia += 10; }
+      if (presupuesto === 'renta')      { if (m.renta_mediana_usd) relevancia += 30; else relevancia += 10; }
+
+      // Movilidad
+      if (movilidad === 'transporte') { relevancia += s.conectividad * 2.5; }
+      else if (movilidad === 'carro') { relevancia += 15; } // neutral
+      else { relevancia += s.conectividad * 1.5; }
+
+      // Prioridades — suma directa de scores
+      if (prioridad.includes('seguridad'))    relevancia += s.seguridad * 2;
+      if (prioridad.includes('conectividad')) relevancia += s.conectividad * 2;
+      if (prioridad.includes('calidad'))      relevancia += s.calidad * 2;
+      if (prioridad.includes('tranquilidad')) relevancia += s.calidad * 2;
+      if (prioridad.includes('precio'))       relevancia += s.precios * 2;
+      if (prioridad.includes('inversion'))    relevancia += s.inversion * 2;
+
+      // No tolera — penalizaciones fuertes
+      if (no_tolera.includes('inseguridad') && s.seguridad <= 4) relevancia -= 25;
+      if (no_tolera.includes('sin_movilidad') && s.conectividad <= 5) relevancia -= 20;
+      if (no_tolera.includes('ruido') && s.calidad <= 3) relevancia -= 15;
+
+      return { zona: z, relevancia };
+    })
+    .filter(r => r.relevancia > 20)
+    .sort((a,b) => b.relevancia - a.relevancia)
+    .slice(0, 5)
+    .map(r => r.zona);
+}
+
+// ── Calcular trade-offs ────────────────────────────────────────
+function calcTradeoffs(zonasSeleccionadas, answers) {
+  const { prioridad, movilidad, no_tolera } = answers;
+  const gana = [];
+  const cede = [];
+
+  // Analizar fortalezas comunes
+  const DIMS_KEYS = ['seguridad','conectividad','calidad','precios','inversion','regulaciones'];
+  const DIM_LABELS = { seguridad:'Seguridad', conectividad:'Conectividad', calidad:'Calidad de vida', precios:'Accesibilidad de precio', inversion:'Potencial de inversión', regulaciones:'Regulaciones' };
+
+  // Score promedio por dimensión entre las zonas recomendadas
+  const avgScores = {};
+  DIMS_KEYS.forEach(k => {
+    avgScores[k] = zonasSeleccionadas.reduce((sum,z) => sum + z.scores[k], 0) / zonasSeleccionadas.length;
+  });
+
+  // Ganancias — dimensiones fuertes en este set
+  const fortalezas = DIMS_KEYS.filter(k => avgScores[k] >= 7).sort((a,b) => avgScores[b] - avgScores[a]);
+  fortalezas.slice(0,3).forEach(k => {
+    const top = zonasSeleccionadas.filter(z => z.scores[k] >= 7).map(z => `Z${z.zona_num}`).join(', ');
+    gana.push(`${DIM_LABELS[k]} sólida${top ? ' — ' + top + ' destacan' : ''}`);
+  });
+
+  // Si conectividad es prioridad sin carro
+  if (movilidad === 'transporte') {
+    const mejorConex = zonasSeleccionadas.sort((a,b) => b.scores.conectividad - a.scores.conectividad)[0];
+    if (mejorConex && mejorConex.scores.conectividad >= 8) {
+      if (!gana.some(g => g.includes('onectividad')))
+        gana.push(`Z${mejorConex.zona_num} tiene conectividad ${mejorConex.scores.conectividad}/10 — viable sin carro`);
+    }
+  }
+
+  // Precio
+  const medianas = zonasSeleccionadas.filter(z => z.mercado.precio_venta_mediana_usd).map(z => z.mercado.precio_venta_mediana_usd);
+  if (medianas.length) {
+    const minMed = Math.min(...medianas);
+    const maxMed = Math.max(...medianas);
+    if (minMed < 200000) gana.push(`Precio accesible — desde $${minMed.toLocaleString()} de mediana`);
+  }
+
+  // Cesiones — dimensiones débiles que el perfil no puede evitar
+  const debilidades = DIMS_KEYS.filter(k => avgScores[k] < 5.5).sort((a,b) => avgScores[a] - avgScores[b]);
+  debilidades.slice(0,2).forEach(k => {
+    const peores = zonasSeleccionadas.filter(z => z.scores[k] <= 4).map(z => `Z${z.zona_num}`).join(', ');
+    cede.push(`${DIM_LABELS[k]} baja en este rango${peores ? ' — especialmente ' + peores : ''}`);
+  });
+
+  // Trade-off estructural — tensiones del mercado
+  const avgSeg = avgScores.seguridad;
+  const avgCon = avgScores.conectividad;
+  const avgCal = avgScores.calidad;
+  const avgPre = avgScores.precios;
+
+  if (avgSeg < 6 && prioridad.includes('seguridad'))
+    cede.push('Seguridad y precio accesible son difíciles de combinar en CDGT');
+
+  if (avgCon >= 7 && avgSeg < 6)
+    cede.push('Alta conectividad en zonas céntricas viene con menor seguridad');
+
+  if (avgCal < 6)
+    cede.push('Calidad ambiental moderada — estas zonas tienen más actividad urbana');
+
+  // Verdad estructural del mercado
+  const hasTodo = avgSeg >= 7 && avgCon >= 7 && avgPre >= 7;
+  if (!hasTodo) {
+    cede.push('No existe zona en CDGT con seguridad, conectividad y precio accesible simultáneamente');
+  }
+
+  return {
+    gana: [...new Set(gana)].slice(0,4),
+    cede: [...new Set(cede)].slice(0,4),
+  };
+}
+
+// ── Radar SVG comparativo ──────────────────────────────────────
+function buildRadar(zonasSeleccionadas) {
+  const cx = 150, cy = 130, R = 95;
+  const n = DIMS.length;
+
+  function polar(angle, r) {
+    const rad = (angle - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  // Grid
+  let grid = '';
+  for (let i = 1; i <= 5; i++) {
+    grid += `<circle cx="${cx}" cy="${cy}" r="${R*i/5}" fill="none" stroke="#ebebeb" stroke-width="1"/>`;
+  }
+  // Ejes
+  let axes = '';
+  for (let i = 0; i < n; i++) {
+    const p = polar(i * 360/n, R);
+    axes += `<line x1="${cx}" y1="${cy}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="#e0e0e0" stroke-width="1"/>`;
+  }
+  // Labels
+  let labels = '';
+  DIMS.forEach((d,i) => {
+    const angle = i * 360/n;
+    const p = polar(angle, R + 20);
+    const anchor = p.x < cx-5 ? 'end' : p.x > cx+5 ? 'start' : 'middle';
+    labels += `<text x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="${anchor}" font-family="Space Grotesk,sans-serif" font-size="9" fill="#999" font-weight="600">${d.full}</text>`;
+  });
+
+  // Polígonos por zona
+  let polys = '';
+  let dots = '';
+  zonasSeleccionadas.forEach((z, zi) => {
+    const color = ZONA_COLORS[zi];
+    const dasharray = zi === 0 ? '' : zi === 1 ? 'stroke-dasharray="5,2"' : zi === 2 ? 'stroke-dasharray="2,3"' : 'stroke-dasharray="8,3"';
+    let pts = '';
+    DIMS.forEach((d,i) => {
+      const val = z.scores[d.key] / 10;
+      const p = polar(i * 360/n, R * val);
+      pts += `${p.x.toFixed(1)},${p.y.toFixed(1)} `;
+    });
+    polys += `<polygon points="${pts.trim()}" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="2" stroke-linejoin="round" ${dasharray}/>`;
+
+    DIMS.forEach((d,i) => {
+      const val = z.scores[d.key] / 10;
+      const p = polar(i * 360/n, R * val);
+      dots += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#fff" stroke-width="1.5"/>`;
+    });
+  });
+
+  const legendHTML = zonasSeleccionadas.map((z,i) => `
+    <div class="legend-item">
+      <div class="ldot" style="background:${ZONA_COLORS[i]}"></div>
+      Z${z.zona_num}
+    </div>`).join('');
+
+  return `
+    <div class="radar-wrap">
+      <div class="section-label">Radar comparativo</div>
+      <svg viewBox="0 0 300 265" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:280px">
+        ${grid}${axes}${labels}${polys}${dots}
+      </svg>
+      <div class="radar-legend">${legendHTML}</div>
+    </div>`;
+}
+
+// ── Tabla comparativa ──────────────────────────────────────────
+function buildTabla(zonasSeleccionadas) {
+  const headers = DIMS.map(d => `<th>${d.label}</th>`).join('');
+
+  const rows = zonasSeleccionadas.map((z, i) => {
+    const color = ZONA_COLORS[i];
+    const cells = DIMS.map(d => {
+      const val = z.scores[d.key];
+      const cls = val >= 7 ? 'sc-hi' : val >= 5 ? 'sc-mi' : 'sc-lo';
+      return `<td><span class="sc ${cls}">${val}</span></td>`;
+    }).join('');
+    return `
+      <tr>
+        <td><div class="zname"><span class="zdot" style="background:${color}"></span>Z${z.zona_num}</div></td>
+        ${cells}
+      </tr>`;
+  }).join('');
+
+  // Precios referencia
+  const preciosRows = zonasSeleccionadas.map((z,i) => {
+    const color = ZONA_COLORS[i];
+    const med = z.mercado.precio_venta_mediana_usd;
+    const renta = z.mercado.renta_mediana_usd;
+    return `
+      <div class="pf-precio-row">
+        <span class="pf-precio-zona">
+          <span class="zdot" style="background:${color};display:inline-block;width:9px;height:9px;border-radius:50%"></span>
+          Z${z.zona_num} · ${z.alias}
+        </span>
+        <span class="pf-precio-val">${med ? '$'+med.toLocaleString() : '—'}</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="pf-table-wrap">
+      <div class="section-label">Scores por dimensión</div>
+      <table>
+        <thead><tr><th>Zona</th>${headers}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="pf-precios" style="margin-top:16px">
+        <div class="section-label">Venta mediana de referencia</div>
+        ${preciosRows}
+      </div>
+    </div>`;
+}
+
+// ── Analizar ──────────────────────────────────────────────────
+function analizar() {
+  if (!zonas) return;
+
+  const answers = {
+    proposito:   getAnswer('proposito'),
+    presupuesto: getAnswer('presupuesto'),
+    movilidad:   getAnswer('movilidad'),
+    no_tolera:   getAnswer('no_tolera') || [],
+    prioridad:   getAnswer('prioridad') || [],
+  };
+
+  if (!answers.proposito || !answers.presupuesto || !answers.movilidad) {
+    document.getElementById('pf-result').innerHTML = `
+      <div class="pf-placeholder">
+        <div class="pf-placeholder-icon">◻</div>
+        <div class="pf-placeholder-text">Completá al menos las primeras 3 preguntas para ver el análisis.</div>
+      </div>`;
+    return;
+  }
+
+  const zonasRec = seleccionarZonas(answers);
+
+  if (!zonasRec.length) {
+    document.getElementById('pf-result').innerHTML = `
+      <div class="pf-placeholder">
+        <div class="pf-placeholder-icon">◑</div>
+        <div class="pf-placeholder-text">No encontramos zonas con suficientes datos para este perfil. Intentá ajustar el presupuesto o las restricciones.</div>
+      </div>`;
+    return;
+  }
+
+  const tradeoffs = calcTradeoffs(zonasRec, answers);
+  const presDesc = {
+    'bajo':'menos de $150K','medio-bajo':'$150K–$220K',
+    'medio-alto':'$220K–$350K','alto':'más de $350K','renta':'renta'
+  };
+  const movDesc = { carro:'con carro', transporte:'sin carro', ambos:'movilidad mixta' };
+
+  const toGanaHTML = tradeoffs.gana.map(t =>
+    `<div class="to-item strong"><span class="to-arr">↑</span>${t}</div>`).join('');
+
+  const toCedeHTML = tradeoffs.cede.map((t,i) =>
+    `<div class="to-item ${i === tradeoffs.cede.length-1 ? 'muted' : ''}"><span class="to-arr">${i === tradeoffs.cede.length-1 ? '—' : '↓'}</span>${t}</div>`).join('');
+
+  document.getElementById('pf-result').innerHTML = `
+    <div class="pf-result-header">
+      <div class="pf-result-label">Resultado de perfil · ${zonasRec.length} zonas relevantes</div>
+      <div class="pf-result-title">${zonasRec.map(z => `Z${z.zona_num}`).join(' · ')}</div>
+      <div class="pf-result-sub">
+        Para <strong>${answers.proposito === 'ambos' ? 'vivir e invertir' : answers.proposito}</strong>,
+        presupuesto <strong>${presDesc[answers.presupuesto]}</strong>,
+        <strong>${movDesc[answers.movilidad]}</strong>.
+        Cada zona tiene ventajas distintas — el radar y la tabla muestran dónde difieren.
+      </div>
+    </div>
+
+    <div class="pf-vis">
+      ${buildRadar(zonasRec)}
+      ${buildTabla(zonasRec)}
+    </div>
+
+    <div class="pf-tradeoffs">
+      <div class="to-block to-gana">
+        <div class="to-label">Lo que ganás en este perfil</div>
+        ${toGanaHTML}
+      </div>
+      <div class="to-block to-cede">
+        <div class="to-label">Lo que cedés</div>
+        ${toCedeHTML}
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${zonasRec.map((z,i) => `
+        <a href="zonas.html"
+           onclick="sessionStorage.setItem('zona_preseleccionada','zona_${String(z.zona_num).padStart(2,'0')}')"
+           style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;
+                  border:1.5px solid ${ZONA_COLORS[i]};border-radius:6px;
+                  font-size:11px;font-weight:700;color:${ZONA_COLORS[i]};
+                  text-decoration:none;transition:opacity 0.15s"
+           onmouseover="this.style.opacity='0.75'"
+           onmouseout="this.style.opacity='1'">
+          <span style="width:8px;height:8px;border-radius:50%;background:${ZONA_COLORS[i]};display:inline-block;flex-shrink:0"></span>
+          Análisis completo Z${z.zona_num} ↗
+        </a>`).join('')}
+    </div>
+
+    <div class="pf-nota">
+      Este análisis trabaja a nivel de zona — no captura variaciones de colonia, barrio o calle dentro de cada zona. Dentro de una misma zona puede haber diferencias importantes de precio, seguridad y ambiente que los datos disponibles no permiten distinguir. Para profundizar en cualquier zona →
+      <a href="zonas.html" style="color:var(--black);font-weight:700;border-bottom:1px solid var(--black);text-decoration:none">análisis de zonas ↗</a>
+    </div>
+  `;
+
+  document.getElementById('pf-result').scrollTop = 0;
+}
+
+function resetear() {
+  document.querySelectorAll('.pf-opt').forEach(o => o.classList.remove('selected'));
+  document.getElementById('pf-result').innerHTML = `
+    <div class="pf-placeholder">
+      <div class="pf-placeholder-icon">◑</div>
+      <div class="pf-placeholder-text">Respondé las preguntas y hacé clic en "Ver trade-offs" para ver qué zonas encajan con tu búsqueda y qué cedés en cada una.</div>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>

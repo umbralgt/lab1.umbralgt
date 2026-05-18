@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklists — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="Checklists de visita para compra y alquiler. Versión esencial y completa.">
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.cl-wrap { padding-top: var(--nav-h); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.cl-hero { padding: 48px 40px 36px; border-bottom: var(--border-soft); }
+.cl-eyebrow { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.cl-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.cl-title { font-size:clamp(28px,4vw,44px); font-weight:700; letter-spacing:-0.03em; line-height:1.05; margin-bottom:12px; }
+.cl-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:520px; }
+
+/* ── Controles ────────────────────────────────────────────────── */
+.cl-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; border-bottom: 1.5px solid var(--black);
+  flex-wrap: wrap; gap: 0;
+}
+.cl-tabs { display: flex; }
+.cl-tab {
+  padding: 16px 24px; font-family:var(--font); font-size:11px; font-weight:700;
+  letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  border:none; background:var(--white); color:var(--gray-500);
+  border-bottom:2px solid transparent; margin-bottom:-2px; transition:var(--trans);
+}
+.cl-tab:first-child { border-right: var(--border-soft); }
+.cl-tab.active { color:var(--black); border-bottom-color:var(--black); }
+
+.cl-version-toggle {
+  display: flex; gap: 6px; padding: 12px 0;
+}
+.cl-ver-btn {
+  padding: 6px 14px; font-family:var(--font); font-size:10px; font-weight:700;
+  letter-spacing:0.04em; text-transform:uppercase; border-radius:var(--radius-sm);
+  cursor:pointer; border:1.5px solid var(--gray-300); background:var(--white);
+  color:var(--gray-500); transition:var(--trans);
+}
+.cl-ver-btn.active { border-color:var(--black); color:var(--black); background:var(--gray-100); }
+
+/* ── Barra de progreso ────────────────────────────────────────── */
+.cl-progress-bar {
+  height: 3px; background: var(--gray-200);
+  flex-shrink: 0;
+}
+.cl-progress-fill {
+  height: 100%; background: var(--black);
+  transition: width 0.3s ease; width: 0%;
+}
+
+/* ── Body layout ──────────────────────────────────────────────── */
+.cl-body { flex:1; display:flex; flex-direction:column; }
+
+/* ── Intro ────────────────────────────────────────────────────── */
+.cl-intro {
+  padding: 28px 40px 24px;
+  border-bottom: var(--border-soft);
+  max-width: 760px;
+}
+.cl-intro-text { font-size:13px; color:var(--gray-700); line-height:1.75; }
+.cl-intro-text + .cl-intro-text { margin-top: 10px; }
+
+/* ── Stats barra ──────────────────────────────────────────────── */
+.cl-stats {
+  display: flex; gap: 0;
+  border-bottom: var(--border-soft);
+  border-top: var(--border-soft);
+  flex-shrink: 0;
+}
+.cl-stat {
+  padding: 12px 20px; border-right: var(--border-soft);
+  display: flex; align-items: baseline; gap: 8px;
+}
+.cl-stat:last-child { border-right: none; }
+.cl-stat-val { font-size:18px; font-weight:700; letter-spacing:-0.02em; }
+.cl-stat-lbl { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.05em; text-transform:uppercase; }
+
+/* ── Lista de ítems ───────────────────────────────────────────── */
+.cl-list { flex:1; overflow-y:auto; padding: 0 40px 40px; }
+
+.cl-section { margin-top: 32px; }
+.cl-section-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: var(--border-strong);
+  margin-bottom: 4px; cursor: pointer;
+  user-select: none;
+}
+.cl-section-code { font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--gray-500); }
+.cl-section-name { font-size:14px; font-weight:700; flex:1; }
+.cl-section-count { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.04em; }
+.cl-section-arrow { font-size:12px; color:var(--gray-400); transition:transform 0.2s; }
+.cl-section.collapsed .cl-section-arrow { transform: rotate(-90deg); }
+.cl-section.collapsed .cl-items { display: none; }
+
+.cl-items { }
+
+.cl-item {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 0 14px;
+  padding: 12px 0;
+  border-bottom: var(--border-muted);
+  align-items: start;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.cl-item:hover { background: var(--gray-100); margin: 0 -40px; padding: 12px 40px; }
+.cl-item.checked .cl-item-pregunta { color: var(--gray-400); text-decoration: line-through; text-decoration-color: var(--gray-300); }
+
+/* Checkbox ───── */
+.cl-checkbox {
+  width: 20px; height: 20px; border: 1.5px solid var(--gray-300);
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px; transition: var(--trans);
+  background: var(--white);
+}
+.cl-item.checked .cl-checkbox {
+  background: var(--black); border-color: var(--black);
+  color: var(--white);
+}
+.cl-checkbox-mark { font-size: 12px; font-weight: 700; display: none; }
+.cl-item.checked .cl-checkbox-mark { display: block; }
+
+/* Contenido ───── */
+.cl-item-content { }
+.cl-item-code { font-size:9px; font-weight:700; color:var(--gray-400); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:3px; }
+.cl-item-tema { font-size:11px; font-weight:700; color:var(--black); margin-bottom:2px; }
+.cl-item-pregunta { font-size:12px; color:var(--gray-700); line-height:1.55; font-weight:400; }
+
+/* Nota ───── */
+.cl-item-nota-wrap { display: flex; align-items: flex-start; margin-top: 2px; }
+
+/* ── Campo de nota ────────────────────────────────────────────── */
+.cl-nota-btn {
+  font-size:10px; font-weight:600; color:var(--gray-400); letter-spacing:0.03em;
+  background:none; border:none; cursor:pointer; padding:2px 0;
+  font-family:var(--font); transition:color 0.15s;
+}
+.cl-nota-btn:hover { color:var(--black); }
+.cl-nota-input {
+  width: 100%; margin-top: 6px; padding: 6px 10px;
+  border: var(--border-soft); border-radius: var(--radius-sm);
+  font-family: var(--font); font-size: 12px; font-weight: 400;
+  color: var(--black); background: var(--white); outline: none;
+  transition: var(--trans); resize: none;
+}
+.cl-nota-input:focus { border-color: var(--black); }
+
+/* ── Acciones ─────────────────────────────────────────────────── */
+.cl-actions {
+  display: flex; gap: 10px; padding: 16px 40px;
+  border-top: var(--border-soft); flex-shrink: 0; flex-wrap: wrap;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.cl-footer {
+  background: var(--black); padding: 28px 40px;
+}
+.cl-footer-headline { font-size:20px; font-weight:700; color:var(--white); letter-spacing:-0.02em; margin-bottom:6px; }
+.cl-footer-sub { font-size:12px; color:#555; font-style:italic; margin-bottom:20px; }
+.cl-footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #1e1e1e; flex-wrap:wrap; gap:10px; }
+.cl-footer-meta { font-size:11px; color:#555; font-weight:500; }
+.cl-footer-link { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--white); color:var(--black); font-size:11px; font-weight:500; border-radius:var(--radius-md); text-decoration:none; }
+
+@media (max-width: 680px) {
+  .cl-hero { padding: 32px 20px 24px; }
+  .cl-controls { padding: 0 20px; }
+  .cl-intro { padding: 20px 20px 16px; }
+  .cl-list { padding: 0 20px 32px; }
+  .cl-actions { padding: 14px 20px; }
+  .cl-footer { padding: 24px 20px; }
+  .cl-stat { padding: 10px 14px; }
+  .cl-item:hover { margin: 0 -20px; padding: 12px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation">
+  <a class="nav-logo" href="index.html">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod active" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="cl-wrap">
+
+  <div class="cl-hero">
+    <div class="cl-eyebrow">Herramienta · Checklists</div>
+    <h1 class="cl-title">Visitá con ojos de cirujano.</h1>
+    <p class="cl-sub">Listas de revisión para compra y alquiler. La versión esencial para cuando vas a ver varias propiedades en un día. La completa para antes de tomar una decisión.</p>
+  </div>
+
+  <!-- Controles: tab + versión -->
+  <div class="cl-controls">
+    <div class="cl-tabs">
+      <button class="cl-tab active" id="tab-compra" onclick="setTab('compra')">Compra</button>
+      <button class="cl-tab" id="tab-alquiler" onclick="setTab('alquiler')">Alquiler</button>
+    </div>
+    <div class="cl-version-toggle">
+      <button class="cl-ver-btn active" id="ver-esencial" onclick="setVersion('esencial')">Esencial</button>
+      <button class="cl-ver-btn" id="ver-completo" onclick="setVersion('completo')">Completo</button>
+    </div>
+  </div>
+
+  <!-- Progreso -->
+  <div class="cl-progress-bar"><div class="cl-progress-fill" id="progress-fill"></div></div>
+
+  <div class="cl-body">
+
+    <!-- Intro dinámica -->
+    <div class="cl-intro" id="cl-intro"></div>
+
+    <!-- Stats -->
+    <div class="cl-stats">
+      <div class="cl-stat">
+        <span class="cl-stat-val" id="stat-total">—</span>
+        <span class="cl-stat-lbl">ítems totales</span>
+      </div>
+      <div class="cl-stat">
+        <span class="cl-stat-val" id="stat-checked">0</span>
+        <span class="cl-stat-lbl">revisados</span>
+      </div>
+      <div class="cl-stat">
+        <span class="cl-stat-val" id="stat-pct">0%</span>
+        <span class="cl-stat-lbl">completado</span>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="cl-list" id="cl-list"></div>
+
+    <!-- Acciones -->
+    <div class="cl-actions">
+      <button class="btn" onclick="resetChecklist()">Reiniciar checklist</button>
+      <button class="btn btn-fill" onclick="imprimirChecklist()">Imprimir / guardar PDF</button>
+    </div>
+
+  </div>
+
+  <footer class="cl-footer">
+    <div class="cl-footer-headline">explorar. contrastar. decidir.</div>
+    <div class="cl-footer-sub">Per experimentum.</div>
+    <div class="cl-footer-bottom">
+      <span class="cl-footer-meta">( UMBRAL ) · Ciudad de Guatemala · 2025–2027</span>
+      <a class="cl-footer-link" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+        <span>umbralgt.com</span><span>↗</span>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Checklists
+// ══════════════════════════════════════════════════════════════
+
+// ── Datos ─────────────────────────────────────────────────────
+const INTROS = {
+  compra: {
+    esencial: `Esta es la versión esencial del checklist de ( UMBRAL ). Está pensado para cuando tenés poco tiempo o vas a ver varias propiedades el mismo día. No reemplaza la versión completa, pero te ayuda a no olvidar los puntos que más impactan tu bolsillo, tu tranquilidad y tu calidad de vida.<br><br>Si alguna respuesta te deja dudas, el siguiente paso es ir al checklist completo y revisar el tema con más detalle antes de tomar una decisión.`,
+    completo: `Comprar una vivienda no es un acto romántico: es una de las decisiones financieras más grandes de tu vida.<br><br>Este checklist existe para algo muy simple: que no te enamores de una vista y luego descubras un problema estructural, legal o económico que nadie te mencionó. Aquí no te voy a vender un proyecto, ni empujar a ningún desarrollador. ( UMBRAL ) es un experimento social de transparencia: la única meta es que tomes mejores decisiones con la información completa enfrente.<br><br>La idea es que llevés este documento en tu teléfono o tablet cuando visités un apartamento o casa. Marcá lo que vas viendo, anotá lo que no sabés y, sobre todo, hacé las preguntas incómodas. Si algo no te lo quieren contestar con claridad, eso ya es una respuesta.`,
+  },
+  alquiler: {
+    esencial: `Esta es la versión esencial del checklist de ( UMBRAL ). Está pensado para cuando tenés poco tiempo o vas a ver varias propiedades el mismo día. No reemplaza la versión completa, pero te ayuda a no olvidar los puntos que más impactan tu bolsillo, tu tranquilidad y tu calidad de vida.<br><br>Si alguna respuesta te deja dudas, el siguiente paso es ir al checklist completo y revisar el tema con más detalle antes de tomar una decisión.`,
+    completo: `Alquilar parece "más ligero" que comprar, pero una mala renta puede comerse la mitad de tu ingreso y llenarte de problemas que no salen en la publicación de Facebook.<br><br>Este checklist está pensado para que entrés a una visita con ojos de cirujano, no solo de inquilino emocionado. Aquí no hay comisiones ni intereses escondidos: ( UMBRAL ) es un laboratorio social que quiere probar si compartir información honesta cambia decisiones reales.<br><br>Tu objetivo no es encontrar "el lugar más bonito", sino el lugar que sí podés sostener, que respeta tus derechos como inquilino y que no te sorprende con costos ni reglas que nunca viste venir.`,
+  }
+};
+
+const DATA = {
+  compra: {
+    esencial: [
+      { seccion: 'Visita rápida', items: [
+        { code:'E1',  tema:'Entorno y acceso',       pregunta:'¿La zona, accesos en hora pico y sensación de seguridad te hacen sentir cómodo viviendo aquí?' },
+        { code:'E2',  tema:'Servicios cercanos',     pregunta:'¿Tenés cerca lo que usás en tu vida diaria (super, farmacia, colegio, hospital, etc.)?' },
+        { code:'E3',  tema:'Ruido y ambiente',       pregunta:'Dentro del apto/casa, ¿el nivel de ruido es aceptable de día y de noche?' },
+        { code:'E4',  tema:'Futuro del entorno',     pregunta:'¿Ves señales de cambios que puedan empeorar tráfico, seguridad o ruido pronto?' },
+        { code:'E5',  tema:'Edificio y amenidades',  pregunta:'¿El edificio se ve bien mantenido (elevadores, pasillos, áreas comunes, amenidades que sí usarás)?' },
+        { code:'E6',  tema:'Parqueos y bodega',      pregunta:'¿La cantidad y ubicación de parqueos/bodega realmente te funciona en el día a día?' },
+        { code:'E7',  tema:'Agua y energía',         pregunta:'¿Hay buena presión de agua y no reportan cortes constantes o problemas graves recientes?' },
+        { code:'E8',  tema:'Distribución interior',  pregunta:'¿La distribución se adapta a tu vida real (habitaciones, home office, área social, niños, mascotas)?' },
+        { code:'E9',  tema:'Estado general',         pregunta:'¿Hay señales de humedad, filtraciones, acabados muy dañados o "parches" raros?' },
+        { code:'E10', tema:'Ruido interno',          pregunta:'¿Se escucha mucho a vecinos arriba/abajo/lados?' },
+        { code:'E11', tema:'Costos mensuales reales',pregunta:'¿Tenés claro cuánto pagarás cada mes: cuota de mantenimiento + luz + agua + otros servicios?' },
+        { code:'E12', tema:'Administración',         pregunta:'¿La administración del condominio parece organizada y transparente (respuestas claras, estados de cuenta)?' },
+        { code:'E13', tema:'Legal básico',           pregunta:'¿La propiedad está libre de hipotecas/embargos y con IUSI y mantenimiento al día (soportado en papeles)?' },
+        { code:'E14', tema:'Precio vs mercado',      pregunta:'¿El precio está alineado con avalúo y con propiedades similares en la zona?' },
+        { code:'E15', tema:'Capacidad de pago',      pregunta:'Con hipoteca y todos los costos, ¿esta compra cabe en tu realidad financiera sin ahogarte?' },
+      ]},
+    ],
+    completo: [
+      { seccion:'A. Ubicación, entorno y zonificación', items:[
+        { code:'A1',  tema:'Ubicación general',         pregunta:'¿En qué zona/colonia está ubicada la propiedad?' },
+        { code:'A2',  tema:'Accesos y tráfico',         pregunta:'¿Cómo es el acceso en hora pico (entrada/salida)?' },
+        { code:'A3',  tema:'Transporte',                pregunta:'¿Hay transporte público cercano (paradas de Transmetro, TuBus, rutas)?' },
+        { code:'A4',  tema:'Servicios cercanos',        pregunta:'¿Qué servicios tenés cerca (super, farmacia, gasolinera, colegios, hospitales, centros comerciales)?' },
+        { code:'A5',  tema:'Seguridad percibida',       pregunta:'¿Qué tan seguro se siente el sector de día y de noche?' },
+        { code:'A6',  tema:'Iluminación pública',       pregunta:'¿La calle y alrededores están bien iluminados?' },
+        { code:'A7',  tema:'Zonificación POT',          pregunta:'¿Cuál es la zona G del área según el POT (G0 natural, G1 baja densidad, G2-G5 mayor densidad)? Podés consultarlo en umbralgt.com/bienes-raices.' },
+        { code:'A8',  tema:'Futuras construcciones',    pregunta:'¿Hay terrenos vacíos cerca donde puedan construir edificios que afecten vistas, luz o privacidad?' },
+        { code:'A9',  tema:'Proyectos grandes cercanos',pregunta:'¿Hay proyectos grandes en desarrollo (centros comerciales, oficinas, etc.) que cambien tráfico/ruido?' },
+        { code:'A10', tema:'Ruido exterior',            pregunta:'Dentro del apto/casa, con ventanas cerradas, ¿qué tanto ruido se escucha (tráfico, bares, iglesias, etc.)?' },
+        { code:'A11', tema:'Contaminación visual',      pregunta:'¿Hay bodegas, vallas u otros elementos que afecten la percepción del entorno?' },
+      ]},
+      { seccion:'B. Orientación, clima y vistas', items:[
+        { code:'B1', tema:'Orientación solar',    pregunta:'¿Hacia dónde se orientan sala y habitaciones principales (N, S, E, O)?' },
+        { code:'B2', tema:'Sol directo',          pregunta:'¿En qué horarios entra sol directo a sala y dormitorios? ¿Es agradable o genera sobrecalentamiento?' },
+        { code:'B3', tema:'Sombra',              pregunta:'¿Hay edificios/árboles/aleros que den sombra excesiva o bloqueen luz natural?' },
+        { code:'B4', tema:'Ventilación',          pregunta:'¿Se puede ventilar cruzado (ventanas en lados opuestos)?' },
+        { code:'B5', tema:'Calidad del aire',     pregunta:'¿Se siente encierro, humedad o aire "pesado" en algún ambiente?' },
+        { code:'B6', tema:'Vientos',             pregunta:'En época de vientos fuertes, ¿hay ruidos o filtraciones de aire notables por ventanería o puertas?' },
+        { code:'B7', tema:'Vistas actuales',      pregunta:'¿Qué vistas tengo desde sala, habitaciones y balcón?' },
+        { code:'B8', tema:'Riesgo de perder vistas',pregunta:'¿Es probable que nuevas construcciones bloqueen estas vistas a corto/mediano plazo?' },
+        { code:'B9', tema:'Privacidad visual',    pregunta:'¿Las ventanas miran directamente a ventanas de vecinos u oficinas?' },
+      ]},
+      { seccion:'C. Edificio, condominio y áreas comunes', items:[
+        { code:'C1',  tema:'Niveles y densidad',       pregunta:'¿Cuántos niveles tiene el edificio y cuántas unidades por nivel/en total?' },
+        { code:'C2',  tema:'Desarrollador/arquitecto', pregunta:'¿Quién es el arquitecto/desarrollador y quién hizo el cálculo estructural?' },
+        { code:'C3',  tema:'Memoria estructural sísmica',pregunta:'¿El edificio tiene memoria de cálculo estructural sísmica disponible para revisión? En Guatemala esto es crítico.' },
+        { code:'C4',  tema:'Documentación',            pregunta:'¿Existe documentación básica de diseño/memoria de calidades disponible?' },
+        { code:'C5',  tema:'Elevadores',               pregunta:'¿Cuántos elevadores hay? ¿Cómo se comportan en hora pico (esperas largas, saturación)?' },
+        { code:'C6',  tema:'Elevador de carga',        pregunta:'¿Hay elevador de carga separado del principal?' },
+        { code:'C7',  tema:'Escaleras de emergencia',  pregunta:'¿Hay escaleras de emergencia bien señalizadas y accesibles?' },
+        { code:'C8',  tema:'Parqueos de la unidad',    pregunta:'¿Cuántos parqueos le corresponden a la unidad y dónde están ubicados?' },
+        { code:'C9',  tema:'Comodidad parqueos',       pregunta:'¿Es fácil maniobrar (columnas, giros, altura)?' },
+        { code:'C10', tema:'Parqueos de visita',       pregunta:'¿Hay suficientes parqueos de visita y están bien señalizados?' },
+        { code:'C11', tema:'Bodega',                  pregunta:'¿La unidad tiene bodega? ¿Dónde está y qué tamaño aproximado tiene?' },
+        { code:'C12', tema:'Esquema de seguridad',     pregunta:'¿Qué esquema de seguridad tiene el edificio (garita, cámaras, control de acceso, recepción)?' },
+        { code:'C13', tema:'Registro de visitas',      pregunta:'¿Cómo se registran visitas, proveedores y entregas?' },
+        { code:'C14', tema:'Protocolos de emergencia', pregunta:'¿Hay protocolos claros para sismos, incendios y otras emergencias? ¿Los conocen los residentes?' },
+        { code:'C15', tema:'Ductos e instalaciones',   pregunta:'¿Los ductos de electricidad, agua, datos y gas son accesibles para mantenimiento?' },
+        { code:'C16', tema:'Manejo de basura',         pregunta:'¿Cómo se maneja la basura (cuarto por nivel, ducto, área central)?' },
+        { code:'C17', tema:'Carga y descarga',         pregunta:'¿Hay áreas designadas para mudanzas y proveedores?' },
+        { code:'C18', tema:'Amenidades',              pregunta:'¿Qué amenidades tiene (salón social, gimnasio, piscina, jardín, rooftop, juegos para niños)?' },
+        { code:'C19', tema:'Estado de amenidades',    pregunta:'¿En qué estado de mantenimiento están las amenidades (limpieza, pintura, equipo)?' },
+        { code:'C20', tema:'Reglamento de amenidades',pregunta:'¿Existe reglamento de uso (horarios, reservas, restricciones)?' },
+        { code:'C21', tema:'Planta eléctrica',         pregunta:'¿Hay planta eléctrica? ¿Qué alimenta (áreas comunes, tomacorrientes, elevadores)?' },
+        { code:'C22', tema:'Agua y cisterna',          pregunta:'¿Hay cisterna? ¿Se han dado problemas de falta de agua?' },
+        { code:'C23', tema:'Aguas residuales',         pregunta:'¿Hay planta de tratamiento propia o conexión a red municipal?' },
+        { code:'C24', tema:'Sistema contra incendios', pregunta:'¿Hay detectores, extintores y rutas de evacuación señalizadas en niveles y áreas comunes?' },
+      ]},
+      { seccion:'D. Costos mensuales y administración', items:[
+        { code:'D1',  tema:'Cuota de mantenimiento',   pregunta:'¿Cuál es la cuota de mantenimiento mensual?' },
+        { code:'D2',  tema:'Qué incluye la cuota',     pregunta:'¿Qué incluye exactamente (seguridad, limpieza, elevadores, jardines, administración, seguro)?' },
+        { code:'D3',  tema:'Cuotas extraordinarias',   pregunta:'¿Se han hecho cuotas extraordinarias en los últimos años? ¿Por qué y con qué frecuencia?' },
+        { code:'D4',  tema:'Morosidad',               pregunta:'¿Hay morosidad alta de vecinos en el pago de mantenimiento?' },
+        { code:'D5',  tema:'Consumo de luz',           pregunta:'¿Cuál es el consumo promedio de energía eléctrica de una unidad similar?' },
+        { code:'D6',  tema:'Agua',                    pregunta:'¿Cómo se cobra el agua (medidor individual, prorrateo) y cuál es el promedio mensual?' },
+        { code:'D7',  tema:'Gas',                     pregunta:'¿El gas es central o individual? ¿Dónde se ubican tanques/instalaciones?' },
+        { code:'D8',  tema:'Internet y proveedores',   pregunta:'¿Qué proveedores de internet llegan y qué paquetes recomiendan para esta unidad?' },
+        { code:'D9',  tema:'Seguro del edificio',      pregunta:'¿El edificio tiene seguro general? ¿Qué cubre o no cubre?' },
+        { code:'D10', tema:'Administración',           pregunta:'¿Quién administra el condominio (empresa externa, junta directiva)? ¿Qué tal es su reputación entre vecinos?' },
+      ]},
+      { seccion:'E. Diseño interior y distribución', items:[
+        { code:'E1',  tema:'Metraje',                 pregunta:'¿Cuál es el metraje total según escritura/plano?' },
+        { code:'E2',  tema:'Sensación de espacio',    pregunta:'¿La distribución hace que el metraje se sienta bien aprovechado o hay áreas "perdidas"?' },
+        { code:'E3',  tema:'Zonas definidas',         pregunta:'¿Está clara la separación entre área social, área familiar y área de servicio?' },
+        { code:'E4',  tema:'Habitaciones',            pregunta:'¿Cuántas habitaciones hay y qué tan cómodas son para cama, buro, closet, circulación?' },
+        { code:'E5',  tema:'Baños',                  pregunta:'¿Cuántos baños completos y medios hay? ¿Cómo es la ventilación (ventana o extractor)?' },
+        { code:'E6',  tema:'Cocina',                 pregunta:'¿La cocina tiene suficiente espacio de trabajo, almacenaje y conexiones para equipo?' },
+        { code:'E7',  tema:'Lavandería',             pregunta:'¿La lavandería permite trabajar cómodo (espacio para lavadora/secadora, tender, guardar productos)?' },
+        { code:'E8',  tema:'Área de servicio',       pregunta:'¿Existe dormitorio/baño de servicio si lo necesitás?' },
+        { code:'E9',  tema:'Acabados de piso',       pregunta:'¿En qué estado están los pisos (cerámica, madera, laminado, alfombra)?' },
+        { code:'E10', tema:'Cielos falsos',           pregunta:'¿Los cielos muestran grietas, manchas de humedad o reparaciones mal hechas?' },
+        { code:'E11', tema:'Ventanería',             pregunta:'¿La ventanería cierra bien, sella ruido y no tiene filtraciones visibles?' },
+        { code:'E12', tema:'Carpintería',            pregunta:'¿Puertas, closets y gabinetes cierran bien y no están hinchados o dañados?' },
+        { code:'E13', tema:'Humedades',              pregunta:'¿Hay signos de humedad en esquinas, alrededor de ventanas o detrás de muebles?' },
+      ]},
+      { seccion:'F. Revisiones técnicas básicas', items:[
+        { code:'F1', tema:'Presión de agua',     pregunta:'Al abrir varias llaves a la vez, ¿se mantiene una buena presión?' },
+        { code:'F2', tema:'Drenajes',           pregunta:'¿Los drenajes (lavamanos, regaderas, fregadero) tragan bien o se quedan empozados?' },
+        { code:'F3', tema:'Filtraciones',       pregunta:'¿Se observan manchas de humedad bajo lavamanos, en techos o muros?' },
+        { code:'F4', tema:'Tablero eléctrico',  pregunta:'¿El tablero eléctrico está accesible y rotulado?' },
+        { code:'F5', tema:'Tomacorrientes',     pregunta:'¿Hay suficientes tomacorrientes en cada ambiente o se ven muchas extensiones?' },
+        { code:'F6', tema:'Gas',               pregunta:'¿El sistema de gas (si existe) está bien ubicado y con forma clara de cortar el suministro en emergencia?' },
+        { code:'F7', tema:'Equipos incluidos',  pregunta:'Estufa, horno, refri, calentador, lavadora/secadora, A/C (si se incluyen), ¿funcionan bien? ¿Tienen mantenimiento reciente?' },
+        { code:'F8', tema:'Último nivel',       pregunta:'Si es último nivel, ¿hay historial de filtraciones desde la losa/techo?' },
+      ]},
+      { seccion:'G. Documentación legal y registral', items:[
+        { code:'G1', tema:'Propietario',              pregunta:'¿El vendedor es el propietario que aparece en el Registro de la Propiedad?' },
+        { code:'G2', tema:'Coincidencia de datos',    pregunta:'¿La descripción en escritura (nivel, número, metraje) coincide con lo que ves?' },
+        { code:'G3', tema:'Régimen de condominio',    pregunta:'¿La propiedad está en régimen de propiedad horizontal/condominio?' },
+        { code:'G4', tema:'Reglamento',              pregunta:'¿Podés ver el reglamento de condominio y sus reformas?' },
+        { code:'G5', tema:'Gravámenes',              pregunta:'¿Hay hipotecas, embargos o anotaciones vigentes sobre el inmueble?' },
+        { code:'G6', tema:'IUSI',                    pregunta:'¿Cuánto se paga de IUSI? ¿Los pagos están al día? ¿Hay constancias?' },
+        { code:'G7', tema:'Cuotas de mantenimiento', pregunta:'¿Las cuotas de mantenimiento están al día? ¿Hay carta de la administración?' },
+        { code:'G8', tema:'Permisos de construcción',pregunta:'¿El edificio tiene permisos municipales y de construcción en regla?' },
+        { code:'G9', tema:'Modificaciones internas', pregunta:'¿Se han hecho ampliaciones o cambios que no estén en planos originales?' },
+      ]},
+      { seccion:'H. Avalúo, precio y plusvalía', items:[
+        { code:'H1', tema:'Avalúo',              pregunta:'¿Existe avalúo reciente? ¿De qué fecha y quién lo hizo?' },
+        { code:'H2', tema:'Precio vs avalúo',    pregunta:'¿El precio de venta está alineado con el avalúo o muy por encima/debajo?' },
+        { code:'H3', tema:'Comparables',         pregunta:'¿Cómo se compara el precio con propiedades similares en el mismo edificio/zona?' },
+        { code:'H4', tema:'Plusvalía histórica', pregunta:'¿Cómo se ha comportado la plusvalía de la zona en los últimos años (aprox.)?' },
+        { code:'H5', tema:'Riesgos futuros',     pregunta:'¿Hay riesgos visibles que puedan afectar el valor futuro (saturación, inseguridad, cambios de uso de suelo)?' },
+      ]},
+      { seccion:'I. Forma de pago y costos de cierre', items:[
+        { code:'I1', tema:'Valor en escritura', pregunta:'¿Se declarará el valor real de la operación o un valor distinto?' },
+        { code:'I2', tema:'Costos de cierre',   pregunta:'¿Quién asume impuestos, notario y registro (comprador, vendedor o compartido)?' },
+        { code:'I3', tema:'Otros costos',       pregunta:'¿Qué otros costos debés considerar (comisión, ajustes de IUSI, cuotas ya pagadas, etc.)?' },
+        { code:'I4', tema:'Remodelaciones',     pregunta:'¿Se requiere remodelar? ¿Cuál es el presupuesto estimado para dejar la unidad como la necesitás?' },
+      ]},
+      { seccion:'J. Financiamiento', items:[
+        { code:'J1', tema:'Forma de compra',   pregunta:'¿La compra será de contado o con financiamiento bancario?' },
+        { code:'J2', tema:'Bancos aprobados',  pregunta:'¿El proyecto/edificio está aprobado por varios bancos? ¿Hay restricciones?' },
+        { code:'J3', tema:'Tiempos del banco', pregunta:'¿El vendedor está dispuesto a esperar los tiempos del banco para aprobación y desembolso?' },
+        { code:'J4', tema:'Arras/anticipo',    pregunta:'¿Se firmará contrato de arras? ¿Qué pasa con ese dinero si el banco no aprueba o la operación no cierra?' },
+      ]},
+    ],
+  },
+
+  alquiler: {
+    esencial: [
+      { seccion:'Visita rápida', items:[
+        { code:'E1',  tema:'Entorno y acceso',       pregunta:'¿La zona, accesos en hora pico y sensación de seguridad te hacen sentir cómodo viviendo aquí?' },
+        { code:'E2',  tema:'Servicios cercanos',     pregunta:'¿Tenés cerca lo que usás en tu vida diaria (super, farmacia, colegio, hospital, etc.)?' },
+        { code:'E3',  tema:'Ruido y ambiente',       pregunta:'Dentro del apto/casa, ¿el nivel de ruido es aceptable de día y de noche?' },
+        { code:'E4',  tema:'Futuro del entorno',     pregunta:'¿Ves señales de cambios que puedan empeorar tráfico, seguridad o ruido pronto?' },
+        { code:'E5',  tema:'Edificio y amenidades',  pregunta:'¿El edificio se ve bien mantenido (elevadores, pasillos, áreas comunes, amenidades que sí usarás)?' },
+        { code:'E6',  tema:'Parqueos y bodega',      pregunta:'¿La cantidad y ubicación de parqueos/bodega realmente te funciona en el día a día?' },
+        { code:'E7',  tema:'Agua y energía',         pregunta:'¿Hay buena presión de agua y no reportan cortes constantes o problemas graves recientes?' },
+        { code:'E8',  tema:'Distribución interior',  pregunta:'¿La distribución se adapta a tu rutina (espacio para trabajar, guardar cosas, recibir visitas)?' },
+        { code:'E9',  tema:'Estado general',         pregunta:'¿El estado de acabados y equipos coincide con lo que se ofrece y con lo que necesitás?' },
+        { code:'E10', tema:'Ruido interno',          pregunta:'¿Se escucha mucho a vecinos arriba/abajo/lados?' },
+        { code:'E11', tema:'Renta mensual total',    pregunta:'¿Tenés claro el costo mensual completo (renta + mantenimiento + parqueos + otros cargos obligatorios)?' },
+        { code:'E12', tema:'Ajustes de renta',       pregunta:'¿Entendiste cada cuánto y cómo pueden subir la renta?' },
+        { code:'E13', tema:'Depósito y salida',      pregunta:'¿Sabés exactamente de cuánto es el depósito, cuándo te lo devuelven y qué pasa si salís antes del plazo?' },
+        { code:'E14', tema:'Responsabilidades',      pregunta:'¿Está claro qué repara el propietario y qué repara el inquilino (por escrito)?' },
+        { code:'E15', tema:'Reglas clave',           pregunta:'¿Entendiste reglas sobre mascotas, visitas, ruido, subarriendo y posibles ventas del inmueble?' },
+      ]},
+    ],
+    completo: [
+      { seccion:'A. Ubicación, entorno y zonificación', items:[
+        { code:'A1',  tema:'Ubicación general',          pregunta:'¿En qué zona/colonia está ubicada la propiedad?' },
+        { code:'A2',  tema:'Accesos y tráfico',          pregunta:'¿Cómo es el acceso en hora pico (entrada/salida)?' },
+        { code:'A3',  tema:'Transporte',                 pregunta:'¿Hay transporte público cercano (paradas de Transmetro, TuBus, rutas)?' },
+        { code:'A4',  tema:'Servicios cercanos',         pregunta:'¿Qué servicios tenés cerca (super, farmacia, gasolinera, colegios, hospitales, centros comerciales)?' },
+        { code:'A5',  tema:'Seguridad percibida',        pregunta:'¿Qué tan seguro se siente el sector de día y de noche?' },
+        { code:'A6',  tema:'Iluminación pública',        pregunta:'¿La calle y alrededores están bien iluminados?' },
+        { code:'A7',  tema:'Zonificación',              pregunta:'¿Cuál es la zonificación del área (residencial, mixto, comercial, etc.)?' },
+        { code:'A8',  tema:'Futuras construcciones',     pregunta:'¿Hay terrenos vacíos cerca donde puedan construir edificios que afecten vistas, luz o privacidad?' },
+        { code:'A9',  tema:'Proyectos grandes cercanos', pregunta:'¿Hay proyectos grandes en desarrollo que cambien el tráfico/ruido?' },
+        { code:'A10', tema:'Ruido exterior',             pregunta:'Dentro del apto/casa, con ventanas cerradas, ¿qué tanto ruido se escucha (tráfico, bares, iglesias)?' },
+        { code:'A11', tema:'Contaminación visual',       pregunta:'¿Hay bodegas, vallas u otros elementos que afecten la percepción del entorno?' },
+      ]},
+      { seccion:'B. Orientación, clima y vistas', items:[
+        { code:'B1', tema:'Orientación solar',      pregunta:'¿Hacia dónde se orientan sala y habitaciones principales (N, S, E, O)?' },
+        { code:'B2', tema:'Sol directo',            pregunta:'¿En qué horarios entra sol directo a sala y dormitorios? ¿Es agradable o genera sobrecalentamiento?' },
+        { code:'B3', tema:'Sombra',                pregunta:'¿Hay edificios/árboles/aleros que den sombra excesiva o bloqueen luz natural?' },
+        { code:'B4', tema:'Ventilación',            pregunta:'¿Se puede ventilar cruzado (ventanas en lados opuestos)?' },
+        { code:'B5', tema:'Calidad del aire',       pregunta:'¿Se siente encierro, humedad o aire "pesado" en algún ambiente?' },
+        { code:'B6', tema:'Vientos',               pregunta:'En época de vientos fuertes, ¿hay ruidos o filtraciones de aire notables?' },
+        { code:'B7', tema:'Vistas actuales',        pregunta:'¿Qué vistas tengo desde sala, habitaciones y balcón?' },
+        { code:'B8', tema:'Riesgo de perder vistas',pregunta:'¿Es probable que nuevas construcciones bloqueen estas vistas a corto/mediano plazo?' },
+        { code:'B9', tema:'Privacidad visual',      pregunta:'¿Las ventanas miran directamente a ventanas de vecinos u oficinas?' },
+      ]},
+      { seccion:'C. Edificio, condominio y áreas comunes', items:[
+        { code:'C1',  tema:'Niveles y densidad',       pregunta:'¿Cuántos niveles tiene el edificio y cuántas unidades por nivel/en total?' },
+        { code:'C2',  tema:'Desarrollador',            pregunta:'¿Quién es el arquitecto/desarrollador?' },
+        { code:'C3',  tema:'Elevadores',               pregunta:'¿Cuántos elevadores hay? ¿Cómo se comportan en hora pico?' },
+        { code:'C4',  tema:'Elevador de carga',        pregunta:'¿Hay elevador de carga separado del principal?' },
+        { code:'C5',  tema:'Escaleras de emergencia',  pregunta:'¿Hay escaleras de emergencia bien señalizadas y accesibles?' },
+        { code:'C6',  tema:'Parqueos de la unidad',    pregunta:'¿Cuántos parqueos le corresponden a la unidad y dónde están ubicados?' },
+        { code:'C7',  tema:'Comodidad parqueos',       pregunta:'¿Es fácil maniobrar (columnas, giros, altura)?' },
+        { code:'C8',  tema:'Parqueos de visita',       pregunta:'¿Hay suficientes parqueos de visita?' },
+        { code:'C9',  tema:'Bodega',                  pregunta:'¿La unidad tiene bodega? ¿Dónde está y qué tamaño tiene?' },
+        { code:'C10', tema:'Esquema de seguridad',     pregunta:'¿Qué esquema de seguridad tiene el edificio (garita, cámaras, control de acceso)?' },
+        { code:'C11', tema:'Registro de visitas',      pregunta:'¿Cómo se registran visitas, proveedores y entregas?' },
+        { code:'C12', tema:'Protocolos de emergencia', pregunta:'¿Hay protocolos claros para sismos, incendios y otras emergencias?' },
+        { code:'C13', tema:'Manejo de basura',         pregunta:'¿Cómo se maneja la basura (cuarto por nivel, ducto, área central)?' },
+        { code:'C14', tema:'Amenidades',              pregunta:'¿Qué amenidades tiene (salón social, gimnasio, piscina, jardín, rooftop)?' },
+        { code:'C15', tema:'Estado de amenidades',    pregunta:'¿En qué estado de mantenimiento están las amenidades?' },
+        { code:'C16', tema:'Planta eléctrica',         pregunta:'¿Hay planta eléctrica? ¿Qué alimenta?' },
+        { code:'C17', tema:'Agua y cisterna',          pregunta:'¿Hay cisterna? ¿Se han dado problemas de falta de agua?' },
+        { code:'C18', tema:'Sistema contra incendios', pregunta:'¿Hay detectores, extintores y rutas de evacuación señalizadas?' },
+      ]},
+      { seccion:'D. Costos mensuales y administración', items:[
+        { code:'D1',  tema:'Cuota de mantenimiento',pregunta:'¿Cuál es la cuota de mantenimiento mensual?' },
+        { code:'D2',  tema:'Qué incluye la cuota', pregunta:'¿Qué incluye exactamente (seguridad, limpieza, elevadores, jardines, administración)?' },
+        { code:'D3',  tema:'Cuotas extraordinarias',pregunta:'¿Se han hecho cuotas extraordinarias en los últimos años?' },
+        { code:'D4',  tema:'Consumo de luz',       pregunta:'¿Cuál es el consumo promedio de energía eléctrica de una unidad similar?' },
+        { code:'D5',  tema:'Agua',                pregunta:'¿Cómo se cobra el agua (medidor individual, prorrateo) y cuál es el promedio mensual?' },
+        { code:'D6',  tema:'Gas',                 pregunta:'¿El gas es central o individual?' },
+        { code:'D7',  tema:'Internet',            pregunta:'¿Qué proveedores de internet llegan y qué paquetes recomiendan?' },
+        { code:'D8',  tema:'Administración',       pregunta:'¿Quién administra el condominio? ¿Qué tal es su reputación entre vecinos?' },
+      ]},
+      { seccion:'E. Diseño interior y distribución', items:[
+        { code:'E1',  tema:'Metraje',          pregunta:'¿Cuál es el metraje total del inmueble?' },
+        { code:'E2',  tema:'Aprovechamiento',  pregunta:'¿La distribución hace que el metraje se sienta bien aprovechado?' },
+        { code:'E3',  tema:'Habitaciones',     pregunta:'¿Cuántas habitaciones hay y qué tan cómodas son?' },
+        { code:'E4',  tema:'Baños',           pregunta:'¿Cuántos baños completos y medios hay? ¿Cómo es la ventilación?' },
+        { code:'E5',  tema:'Cocina',          pregunta:'¿La cocina tiene suficiente espacio de trabajo, almacenaje y conexiones?' },
+        { code:'E6',  tema:'Lavandería',      pregunta:'¿La lavandería permite trabajar cómodo?' },
+        { code:'E7',  tema:'Acabados',        pregunta:'¿En qué estado están los pisos, paredes y cielos?' },
+        { code:'E8',  tema:'Ventanería',      pregunta:'¿La ventanería cierra bien y no tiene filtraciones visibles?' },
+        { code:'E9',  tema:'Carpintería',     pregunta:'¿Puertas, closets y gabinetes cierran bien?' },
+        { code:'E10', tema:'Humedades',       pregunta:'¿Hay signos de humedad en esquinas, alrededor de ventanas o detrás de muebles?' },
+      ]},
+      { seccion:'F. Revisiones técnicas básicas', items:[
+        { code:'F1', tema:'Presión de agua',    pregunta:'Al abrir varias llaves a la vez, ¿se mantiene una buena presión?' },
+        { code:'F2', tema:'Drenajes',          pregunta:'¿Los drenajes tragan bien o se quedan empozados?' },
+        { code:'F3', tema:'Filtraciones',      pregunta:'¿Se observan manchas de humedad bajo lavamanos, en techos o muros?' },
+        { code:'F4', tema:'Tablero eléctrico', pregunta:'¿El tablero eléctrico está accesible y rotulado?' },
+        { code:'F5', tema:'Tomacorrientes',    pregunta:'¿Hay suficientes tomacorrientes en cada ambiente?' },
+        { code:'F6', tema:'Equipos incluidos', pregunta:'Los equipos incluidos (estufa, calentador, etc.), ¿funcionan bien y tienen mantenimiento reciente?' },
+        { code:'F7', tema:'Último nivel',      pregunta:'Si es último nivel, ¿hay historial de filtraciones desde la losa/techo?' },
+      ]},
+      { seccion:'G. Contrato y condiciones económicas', items:[
+        { code:'G1', tema:'Plazo',              pregunta:'¿Cuál es la duración mínima del contrato (1 año, 2 años, etc.)?' },
+        { code:'G2', tema:'Renovación',         pregunta:'¿Hay renovación automática? ¿En qué condiciones?' },
+        { code:'G3', tema:'Ajustes de renta',   pregunta:'¿Cada cuánto y cómo pueden ajustar la renta (porcentaje fijo, índice, criterio libre)?' },
+        { code:'G4', tema:'Qué incluye la renta',pregunta:'¿La renta incluye mantenimiento, parqueos, bodega, línea blanca, muebles, internet?' },
+        { code:'G5', tema:'Moneda y forma de pago',pregunta:'¿La renta se paga en quetzales o dólares? ¿Cómo y dónde se paga?' },
+        { code:'G6', tema:'IUSI',               pregunta:'¿El IUSI del inmueble está al día? ¿Se traslada algún costo de IUSI al inquilino directa o indirectamente?' },
+      ]},
+      { seccion:'H. Depósito y garantías', items:[
+        { code:'H1', tema:'Monto del depósito',  pregunta:'¿De cuánto es el depósito de garantía (1 mes, 2 meses, más)?' },
+        { code:'H2', tema:'Devolución del depósito',pregunta:'¿En qué casos pueden retener el depósito total o parcialmente? ¿Hay fecha máxima de devolución establecida por escrito en el contrato?' },
+        { code:'H3', tema:'Fiador/aval',         pregunta:'¿Se requiere fiador? ¿Con qué requisitos?' },
+        { code:'H4', tema:'Salida anticipada',   pregunta:'Si necesitás irte antes, ¿cuál es la penalización y cuánto aviso debés dar?' },
+      ]},
+      { seccion:'I. Mantenimiento y reparaciones', items:[
+        { code:'I1', tema:'Reparaciones menores', pregunta:'¿Qué reparaciones son responsabilidad del inquilino (bombillos, grifos, pintura)?' },
+        { code:'I2', tema:'Reparaciones mayores', pregunta:'¿Qué reparaciones son responsabilidad del propietario (instalaciones, estructura, equipos entregados)?' },
+        { code:'I3', tema:'Tiempos de respuesta', pregunta:'¿Hay tiempos máximos de respuesta para reparaciones urgentes (fugas, fallas eléctricas)?' },
+        { code:'I4', tema:'Coordinación',         pregunta:'¿Quién coordina con la administración del edificio en caso de problemas?' },
+      ]},
+      { seccion:'J. Reglas de convivencia', items:[
+        { code:'J1', tema:'Mascotas',         pregunta:'¿Se permiten mascotas? ¿Con qué condiciones (tamaño, cantidad, depósito adicional)?' },
+        { code:'J2', tema:'Subarrendamiento', pregunta:'¿Se permite subarrendar o alquilar por plataformas tipo Airbnb?' },
+        { code:'J3', tema:'Ruido',           pregunta:'¿Qué restricciones de ruido existen (horarios, instrumentos, fiestas)?' },
+        { code:'J4', tema:'Visitas',         pregunta:'¿Hay reglas especiales para visitas frecuentes o largas estancias?' },
+        { code:'J5', tema:'Venta del inmueble',pregunta:'Si el propietario decide vender mientras alquilás, ¿qué pasa con tu contrato?' },
+        { code:'J6', tema:'No renovación',   pregunta:'¿Cuánto tiempo de aviso deben darte si no desean renovar el contrato?' },
+      ]},
+    ],
+  },
+};
+
+// ── Estado ─────────────────────────────────────────────────────
+let state = { tab:'compra', version:'esencial', checked: {}, notas: {} };
+
+function key(tab, ver, sec, code) { return `${tab}-${ver}-${sec}-${code}`; }
+
+// ── Renderizar ─────────────────────────────────────────────────
+function render() {
+  const secciones = DATA[state.tab][state.version];
+  const intro = INTROS[state.tab][state.version];
+
+  // Intro
+  document.getElementById('cl-intro').innerHTML =
+    `<p class="cl-intro-text">${intro}</p>`;
+
+  // Contar ítems
+  let total = 0;
+  secciones.forEach(s => { total += s.items.length; });
+
+  // Contar checked
+  let checked = 0;
+  secciones.forEach(s => {
+    s.items.forEach(it => {
+      if (state.checked[key(state.tab, state.version, s.seccion, it.code)]) checked++;
+    });
+  });
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-checked').textContent = checked;
+  document.getElementById('stat-pct').textContent = total ? Math.round(checked/total*100)+'%' : '0%';
+  document.getElementById('progress-fill').style.width = total ? (checked/total*100)+'%' : '0%';
+
+  // Lista
+  const list = document.getElementById('cl-list');
+  list.innerHTML = secciones.map(sec => {
+    const secChecked = sec.items.filter(it =>
+      state.checked[key(state.tab, state.version, sec.seccion, it.code)]).length;
+
+    return `
+      <div class="cl-section" id="sec-${sec.seccion.replace(/\W+/g,'_')}">
+        <div class="cl-section-header" onclick="toggleSection(this)">
+          <span class="cl-section-name">${sec.seccion}</span>
+          <span class="cl-section-count">${secChecked}/${sec.items.length}</span>
+          <span class="cl-section-arrow">▾</span>
+        </div>
+        <div class="cl-items">
+          ${sec.items.map(it => {
+            const k = key(state.tab, state.version, sec.seccion, it.code);
+            const isChecked = !!state.checked[k];
+            const nota = state.notas[k] || '';
+            const hasNota = nota.length > 0;
+            return `
+              <div class="cl-item ${isChecked ? 'checked' : ''}" data-key="${k}">
+                <div class="cl-checkbox" onclick="toggleItem('${k}')">
+                  <span class="cl-checkbox-mark">✓</span>
+                </div>
+                <div class="cl-item-content" onclick="toggleItem('${k}')">
+                  <div class="cl-item-code">${it.code}</div>
+                  <div class="cl-item-tema">${it.tema}</div>
+                  <div class="cl-item-pregunta">${it.pregunta}</div>
+                  ${hasNota ? `<div style="font-size:11px;color:var(--gray-500);margin-top:4px;font-style:italic">"${nota}"</div>` : ''}
+                </div>
+                <div>
+                  <button class="cl-nota-btn" onclick="toggleNota('${k}', event)">
+                    ${hasNota ? 'Nota ✎' : '+ nota'}
+                  </button>
+                </div>
+              </div>
+              <div id="nota-input-${k}" style="display:${hasNota ? 'none' : 'none'};padding:4px 46px 8px;">
+                <textarea class="cl-nota-input" rows="2"
+                  placeholder="Anota lo que observaste..."
+                  onblur="saveNota('${k}', this.value)">${nota}</textarea>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSection(header) {
+  header.parentElement.classList.toggle('collapsed');
+}
+
+function toggleItem(k) {
+  state.checked[k] = !state.checked[k];
+  render();
+}
+
+function toggleNota(k, e) {
+  e.stopPropagation();
+  const wrap = document.getElementById('nota-input-' + k);
+  if (wrap) {
+    const shown = wrap.style.display === 'block';
+    wrap.style.display = shown ? 'none' : 'block';
+    if (!shown) wrap.querySelector('textarea').focus();
+  }
+}
+
+function saveNota(k, val) {
+  if (val.trim()) state.notas[k] = val.trim();
+  else delete state.notas[k];
+  render();
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  document.getElementById('tab-compra').classList.toggle('active', tab === 'compra');
+  document.getElementById('tab-alquiler').classList.toggle('active', tab === 'alquiler');
+  render();
+}
+
+function setVersion(ver) {
+  state.version = ver;
+  document.getElementById('ver-esencial').classList.toggle('active', ver === 'esencial');
+  document.getElementById('ver-completo').classList.toggle('active', ver === 'completo');
+  render();
+}
+
+function resetChecklist() {
+  if (!confirm('¿Reiniciar este checklist? Se perderán las marcas y notas.')) return;
+  const prefix = `${state.tab}-${state.version}-`;
+  Object.keys(state.checked).forEach(k => { if (k.startsWith(prefix)) delete state.checked[k]; });
+  Object.keys(state.notas).forEach(k => { if (k.startsWith(prefix)) delete state.notas[k]; });
+  render();
+}
+
+function imprimirChecklist() { window.print(); }
+
+// ── Init ───────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

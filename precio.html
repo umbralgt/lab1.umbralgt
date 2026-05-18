@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precio justo — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="¿Tu precio está en rango? Analizá venta o renta según zona y metraje contra el mercado real.">
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.pj-wrap { padding-top: var(--nav-h); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.pj-hero { padding: 40px 40px 28px; border-bottom: var(--border-soft); }
+.pj-eyebrow { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.pj-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.pj-title { font-size:clamp(26px,3.5vw,40px); font-weight:700; letter-spacing:-0.03em; line-height:1.05; margin-bottom:10px; }
+.pj-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:520px; }
+
+/* ── Body dos columnas ────────────────────────────────────────── */
+.pj-body { flex:1; display:grid; grid-template-columns:340px 1fr; overflow:hidden; }
+
+/* ── Formulario ───────────────────────────────────────────────── */
+.pj-form-col {
+  border-right: 1.5px solid var(--black);
+  padding: 28px 24px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+.pj-toggle { display:grid; grid-template-columns:1fr 1fr; border:1.5px solid var(--black); border-radius:var(--radius-md); overflow:hidden; }
+.pj-toggle-btn {
+  padding:10px; font-family:var(--font); font-size:11px; font-weight:700;
+  letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  border:none; background:var(--white); color:var(--gray-500); transition:var(--trans);
+}
+.pj-toggle-btn.active { background:var(--black); color:var(--white); }
+
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-group-label {
+  font-size:10px; font-weight:700; color:var(--black);
+  letter-spacing:0.06em; text-transform:uppercase;
+}
+.form-group-help { font-size:11px; color:var(--gray-500); font-weight:500; line-height:1.5; }
+
+/* Zona selector en formulario */
+.zona-select-grid { display:flex; flex-wrap:wrap; gap:5px; }
+.zona-select-chip {
+  padding:5px 10px; font-size:10px; font-weight:700;
+  border:1.5px solid var(--gray-300); border-radius:var(--radius-sm);
+  cursor:pointer; color:var(--gray-500); background:var(--white); transition:var(--trans);
+}
+.zona-select-chip:hover { border-color:var(--gray-500); color:var(--black); }
+.zona-select-chip.active { border-color:var(--black); color:var(--black); background:var(--gray-100); }
+
+.pj-submit {
+  width:100%; padding:12px; border-radius:var(--radius-md);
+  border:none; background:var(--black); color:var(--white);
+  font-family:var(--font); font-size:12px; font-weight:700;
+  letter-spacing:0.05em; text-transform:uppercase;
+  cursor:pointer; transition:var(--trans);
+}
+.pj-submit:hover { opacity:0.85; }
+.pj-error { font-size:12px; color:#c0392b; font-weight:500; }
+
+.pj-disclaimer {
+  font-size:11px; color:var(--gray-500); line-height:1.6;
+  font-weight:500; padding-top:16px; border-top:var(--border-soft);
+}
+
+/* ── Panel resultado ──────────────────────────────────────────── */
+.pj-result-col { overflow-y:auto; padding:28px 32px; display:flex; flex-direction:column; gap:28px; }
+
+.pj-placeholder {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; height:100%; text-align:center;
+  color:var(--gray-400); gap:14px; padding:40px;
+}
+.pj-placeholder-icon { font-size:28px; opacity:0.3; }
+.pj-placeholder-text { font-size:13px; font-weight:500; line-height:1.6; max-width:280px; }
+
+/* Resultado: veredicto principal */
+.pj-veredicto {
+  border: 1.5px solid var(--black); border-radius:var(--radius-lg);
+  overflow:hidden;
+}
+.pj-veredicto-header { padding:16px 20px; border-bottom:var(--border-soft); }
+.pj-veredicto-label { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:6px; }
+.pj-veredicto-title { font-size:22px; font-weight:700; letter-spacing:-0.02em; }
+.pj-veredicto-body { padding:16px 20px; }
+
+/* Barra de rango */
+.rango-wrap { margin:16px 0; }
+.rango-label { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:10px; }
+.rango-bar-wrap { position:relative; height:12px; background:var(--gray-200); border-radius:6px; margin:8px 0 20px; }
+.rango-bar-mercado { position:absolute; height:100%; border-radius:6px; background:var(--gray-300); }
+.rango-bar-usuario {
+  position:absolute; top:-6px; width:4px; height:24px;
+  background:var(--black); border-radius:2px; transform:translateX(-2px);
+  transition: left 0.5s ease;
+}
+.rango-bar-mediana {
+  position:absolute; top:-3px; width:2px; height:18px;
+  background:var(--gray-500); border-radius:1px; transform:translateX(-1px);
+}
+.rango-markers { display:flex; justify-content:space-between; font-size:10px; font-weight:600; color:var(--gray-500); }
+.rango-usuario-label {
+  font-size:11px; font-weight:700; color:var(--black);
+  text-align:center; margin-top:-14px; margin-bottom:8px;
+}
+
+/* Posición textual */
+.pj-posicion {
+  display:inline-flex; align-items:baseline; gap:6px;
+  padding:10px 16px; border-radius:var(--radius-sm);
+  font-size:13px; font-weight:700; margin-bottom:12px;
+}
+.pos-bajo     { background:#f8f8f8; color:var(--gray-700); border:1.5px solid var(--gray-300); }
+.pos-rango    { background:#f8f8f8; color:var(--black);     border:1.5px solid var(--black); }
+.pos-alto     { background:#f8f8f8; color:var(--gray-700); border:1.5px solid var(--gray-300); }
+.pos-muy-alto { background:#f0f0f0; color:var(--gray-600); border:1.5px solid var(--gray-400); }
+
+.pj-posicion-note { font-size:12px; color:var(--gray-700); line-height:1.65; }
+
+/* Datos de mercado de referencia */
+.pj-mercado-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--gray-300); border:1px solid var(--gray-300); border-radius:var(--radius-md); overflow:hidden; }
+.pj-mercado-cell { background:var(--white); padding:12px 14px; }
+.pj-mercado-val { font-size:16px; font-weight:700; letter-spacing:-0.02em; border-bottom:1.5px solid var(--gray-300); display:inline-block; padding-bottom:2px; margin-bottom:4px; }
+.pj-mercado-lbl { font-size:9px; font-weight:700; color:var(--gray-500); letter-spacing:0.06em; text-transform:uppercase; }
+
+/* Factores */
+.pj-factores { }
+.pj-factores-title { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:12px; padding-bottom:8px; border-bottom:var(--border-strong); }
+.factor-row { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:var(--border-muted); font-size:12px; }
+.factor-row:last-child { border-bottom:none; }
+.factor-dir { font-size:12px; font-weight:700; flex-shrink:0; width:18px; }
+.factor-up { color:var(--black); }
+.factor-down { color:var(--gray-500); }
+.factor-text { color:var(--gray-700); line-height:1.5; font-weight:500; }
+
+/* Contexto zona */
+.pj-zona-ctx { background:var(--gray-100); border-radius:var(--radius-md); padding:16px 18px; }
+.pj-zona-ctx-title { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:10px; }
+.pj-zona-scores { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.pj-zona-score-row { display:flex; align-items:center; gap:8px; }
+.pj-zona-score-name { font-size:11px; font-weight:500; color:var(--gray-600); flex:1; }
+.pj-zona-score-val {
+  font-size:11px; font-weight:700; padding:2px 7px;
+  border-radius:4px; flex-shrink:0;
+}
+.sc-9,.sc-10 { background:#0a0a0a; color:#fff; }
+.sc-7,.sc-8  { background:#555;    color:#fff; }
+.sc-5,.sc-6  { background:#e0e0e0; color:#666; }
+.sc-1,.sc-2,.sc-3,.sc-4 { background:#f0f0f0; color:#aaa; }
+
+/* CTA zona */
+.pj-zona-link {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:12px; padding:8px 12px; background:var(--white);
+  border:var(--border-soft); border-radius:var(--radius-sm);
+  font-size:11px; font-weight:700; color:var(--black);
+  text-decoration:none; letter-spacing:0.03em; text-transform:uppercase; transition:var(--trans);
+}
+.pj-zona-link:hover { border-color:var(--black); }
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.pj-footer { background:var(--black); padding:28px 40px; flex-shrink:0; }
+.pj-footer-headline { font-size:20px; font-weight:700; color:var(--white); letter-spacing:-0.02em; margin-bottom:6px; }
+.pj-footer-sub { font-size:12px; color:#555; font-style:italic; margin-bottom:20px; }
+.pj-footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #1e1e1e; flex-wrap:wrap; gap:10px; }
+.pj-footer-meta { font-size:11px; color:#555; font-weight:500; }
+.pj-footer-link { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--white); color:var(--black); font-size:11px; font-weight:500; border-radius:var(--radius-md); text-decoration:none; }
+
+@media (max-width:780px) {
+  .pj-body { grid-template-columns:1fr; }
+  .pj-form-col { border-right:none; border-bottom:1.5px solid var(--black); }
+  .pj-hero { padding:28px 20px 20px; }
+  .pj-footer { padding:24px 20px; }
+  .pj-result-col { padding:20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation">
+  <a class="nav-logo" href="index.html">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod active" href="precio.html">Precio justo</a>
+  </div>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="pj-wrap">
+
+  <div class="pj-hero">
+    <div class="pj-eyebrow">Herramienta · Precio justo</div>
+    <h1 class="pj-title">¿Tu precio está en rango?</h1>
+    <p class="pj-sub">Ingresá zona, metraje y precio para ver dónde caés dentro del mercado real de esa zona. No es un avalúo — es orientación de mercado para llegar a la conversación con más información.</p>
+  </div>
+
+  <div class="pj-body">
+
+    <!-- Formulario -->
+    <div class="pj-form-col">
+
+      <div>
+        <div class="form-group-label" style="margin-bottom:8px">¿Qué querés analizar?</div>
+        <div class="pj-toggle">
+          <button class="pj-toggle-btn active" id="btn-venta" onclick="setModo('venta')">Venta</button>
+          <button class="pj-toggle-btn" id="btn-renta" onclick="setModo('renta')">Renta</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-group-label">Zona</div>
+        <div class="zona-select-grid" id="zona-chips"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-group-label" for="pj-area">Área construida (m²)</label>
+        <input type="number" id="pj-area" class="form-input" min="20" max="2000" step="1" placeholder="Ej. 85">
+        <div class="form-group-help">Metraje total de la propiedad.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-group-label" for="pj-precio" id="precio-label">Precio de venta (USD)</label>
+        <input type="number" id="pj-precio" class="form-input" min="0" step="1000" placeholder="Ej. 185,000">
+        <div class="form-group-help" id="precio-help">Precio total en dólares que pensás pedir.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-group-label">Amenidades de la propiedad <span style="font-size:10px;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-left:4px">Opcional</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:5px" id="amen-chips">
+          <span class="zona-select-chip" data-amen="piscina">Piscina</span>
+          <span class="zona-select-chip" data-amen="gimnasio">Gimnasio</span>
+          <span class="zona-select-chip" data-amen="seguridad">Seguridad 24h</span>
+          <span class="zona-select-chip" data-amen="ascensor">Ascensor</span>
+          <span class="zona-select-chip" data-amen="amoblado">Amoblado</span>
+        </div>
+        <div class="form-group-help">Las amenidades influyen en si el precio está en el rango bajo o alto de la zona.</div>
+      </div>
+
+      <div class="pj-error" id="pj-error"></div>
+      <button class="pj-submit" onclick="analizar()">Analizar precio</button>
+
+      <div class="pj-disclaimer">
+        No es un avalúo ni una tasación. Los rangos se basan en datos del mercado residencial de Ciudad de Guatemala 2025. El precio real de cierre depende de factores específicos de la propiedad que esta herramienta no puede evaluar.
+      </div>
+
+    </div>
+
+    <!-- Resultado -->
+    <div class="pj-result-col" id="pj-result-col">
+      <div class="pj-placeholder">
+        <div class="pj-placeholder-icon">◈</div>
+        <div class="pj-placeholder-text">Completá el formulario para ver dónde cae tu precio en el mercado de esa zona.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="pj-footer">
+    <div class="pj-footer-headline">explorar. contrastar. decidir.</div>
+    <div class="pj-footer-sub">Per experimentum.</div>
+    <div class="pj-footer-bottom">
+      <span class="pj-footer-meta">( UMBRAL ) · Ciudad de Guatemala · 2025–2027</span>
+      <a class="pj-footer-link" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+        <span>umbralgt.com</span><span>↗</span>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Precio Justo
+// ══════════════════════════════════════════════════════════════
+
+let zonas = null;
+let modoActivo = 'venta';
+let zonaActiva = null;
+let amenidades = new Set();
+
+const DIMS_LABELS = {
+  conectividad: 'Conectividad',
+  inversion:    'Inv. y demanda',
+  regulaciones: 'Regulaciones',
+  precios:      'Accesibilidad',
+  seguridad:    'Seguridad',
+  calidad:      'Calidad de vida',
+};
+
+async function init() {
+  const res = await fetch('data/zonas.json');
+  zonas = await res.json();
+  renderZonaChips();
+}
+
+// ── Modo venta / renta ────────────────────────────────────────
+function setModo(modo) {
+  modoActivo = modo;
+  document.getElementById('btn-venta').classList.toggle('active', modo === 'venta');
+  document.getElementById('btn-renta').classList.toggle('active', modo === 'renta');
+
+  if (modo === 'venta') {
+    document.getElementById('precio-label').textContent = 'Precio de venta (USD)';
+    document.getElementById('precio-help').textContent = 'Precio total en dólares que pensás pedir.';
+    document.getElementById('pj-precio').placeholder = 'Ej. 185,000';
+  } else {
+    document.getElementById('precio-label').textContent = 'Renta mensual (USD)';
+    document.getElementById('precio-help').textContent = 'Renta mensual en dólares que pensás cobrar.';
+    document.getElementById('pj-precio').placeholder = 'Ej. 1,200';
+  }
+  resetResult();
+}
+
+// ── Zona chips ────────────────────────────────────────────────
+function renderZonaChips() {
+  const sorted = Object.values(zonas).sort((a,b) => a.zona_num - b.zona_num);
+  document.getElementById('zona-chips').innerHTML = sorted.map(z => `
+    <button class="zona-select-chip" data-zona="zona_${String(z.zona_num).padStart(2,'0')}"
+      onclick="selectZona('zona_${String(z.zona_num).padStart(2,'0')}')">
+      Z${z.zona_num}
+    </button>`).join('');
+}
+
+function selectZona(key) {
+  zonaActiva = key;
+  document.querySelectorAll('#zona-chips .zona-select-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.zona === key);
+  });
+  resetResult();
+}
+
+// ── Amenidades ────────────────────────────────────────────────
+document.querySelectorAll('#amen-chips .zona-select-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const a = chip.dataset.amen;
+    if (amenidades.has(a)) { amenidades.delete(a); chip.classList.remove('active'); }
+    else { amenidades.add(a); chip.classList.add('active'); }
+  });
+});
+
+// ── Analizar ──────────────────────────────────────────────────
+function analizar() {
+  document.getElementById('pj-error').textContent = '';
+
+  if (!zonaActiva) {
+    document.getElementById('pj-error').textContent = 'Seleccioná una zona.';
+    return;
+  }
+
+  const area   = parseFloat(document.getElementById('pj-area').value);
+  const precio = parseFloat(document.getElementById('pj-precio').value);
+
+  if (!area || area <= 0) {
+    document.getElementById('pj-error').textContent = 'Ingresá el área construida en m².';
+    return;
+  }
+  if (!precio || precio <= 0) {
+    document.getElementById('pj-error').textContent = modoActivo === 'venta'
+      ? 'Ingresá el precio de venta.'
+      : 'Ingresá la renta mensual.';
+    return;
+  }
+
+  const z = zonas[zonaActiva];
+  const m = z.mercado;
+
+  if (modoActivo === 'venta') {
+    analizarVenta(z, m, area, precio);
+  } else {
+    analizarRenta(z, m, area, precio);
+  }
+}
+
+function analizarVenta(z, m, area, precio) {
+  const m2Usuario = precio / area;
+  const p25 = m.precio_venta_p25_usd ? m.precio_venta_p25_usd / (m.area_mediana_m2 || area) : null;
+  const med  = m.precio_m2_mediana_usd;
+  const p75  = m.precio_venta_p75_usd ? m.precio_venta_p75_usd / (m.area_mediana_m2 || area) : null;
+
+  if (!med) {
+    document.getElementById('pj-error').textContent = 'Sin datos suficientes para esta zona.';
+    return;
+  }
+
+  renderResultado({
+    z, m, area, precio,
+    m2Usuario,
+    p25: p25 || med * 0.75,
+    med,
+    p75: p75 || med * 1.4,
+    modo: 'venta',
+    precioLabel: '$' + precio.toLocaleString(),
+    m2Label: '$' + Math.round(m2Usuario).toLocaleString() + '/m²',
+    medLabel: '$' + med.toLocaleString() + '/m²',
+    rentaRef: m.renta_mediana_usd ? '$' + m.renta_mediana_usd.toLocaleString() + '/mes' : null,
+    yieldRef: m.yield_bruto_pct ? m.yield_bruto_pct + '%' : null,
+  });
+}
+
+function analizarRenta(z, m, area, precio) {
+  if (!m.renta_mediana_usd) {
+    document.getElementById('pj-error').textContent = 'Sin datos de renta para esta zona.';
+    return;
+  }
+
+  const rentaM2 = precio / area;
+  const medRentaM2 = m.renta_mediana_usd / (m.area_mediana_m2 || area);
+  const p25Renta = medRentaM2 * 0.72;
+  const p75Renta = medRentaM2 * 1.38;
+
+  // Implied yield
+  const yieldImplied = m.precio_m2_mediana_usd
+    ? ((precio * 12) / (m.precio_m2_mediana_usd * area) * 100).toFixed(1) + '%'
+    : null;
+
+  renderResultado({
+    z, m, area, precio,
+    m2Usuario: rentaM2,
+    p25: p25Renta,
+    med: medRentaM2,
+    p75: p75Renta,
+    modo: 'renta',
+    precioLabel: '$' + precio.toLocaleString() + '/mes',
+    m2Label: '$' + rentaM2.toFixed(1) + '/m²/mes',
+    medLabel: '$' + medRentaM2.toFixed(1) + '/m²/mes',
+    rentaRef: null,
+    yieldRef: yieldImplied,
+  });
+}
+
+// ── Render resultado ───────────────────────────────────────────
+function renderResultado({ z, m, area, precio, m2Usuario, p25, med, p75, modo,
+                            precioLabel, m2Label, medLabel, rentaRef, yieldRef }) {
+
+  // Posición en el rango
+  let posicion, posClass, nota;
+  const pctDiff = ((m2Usuario - med) / med * 100).toFixed(0);
+
+  if (m2Usuario < p25) {
+    posicion = 'Por debajo del mercado';
+    posClass = 'pos-bajo';
+    nota = `Tu precio/m² está un ${Math.abs(pctDiff)}% por debajo de la mediana de Zona ${z.zona_num}. Podés estar dejando dinero en la mesa, o hay factores específicos de la propiedad que lo justifican (estado, piso, sin amenidades).`;
+  } else if (m2Usuario <= p75) {
+    posicion = 'Dentro del rango de mercado';
+    posClass = 'pos-rango';
+    nota = `Tu precio/m² está ${Math.abs(pctDiff) < 5 ? 'muy cerca de' : (pctDiff > 0 ? 'un '+pctDiff+'% por encima de' : 'un '+Math.abs(pctDiff)+'% por debajo de')} la mediana de Zona ${z.zona_num}. Es un precio competitivo y realista para este mercado.`;
+  } else if (m2Usuario <= p75 * 1.2) {
+    posicion = 'En el extremo alto del mercado';
+    posClass = 'pos-alto';
+    nota = `Tu precio/m² está un ${pctDiff}% por encima de la mediana. Es alcanzable para propiedades con amenidades completas, acabados premium o ubicación privilegiada dentro de la zona.`;
+  } else {
+    posicion = 'Por encima del mercado';
+    posClass = 'pos-muy-alto';
+    nota = `Tu precio/m² está un ${pctDiff}% por encima de la mediana. Es un precio muy agresivo para Zona ${z.zona_num}. A menos que la propiedad tenga atributos muy específicos que lo justifiquen, puede dificultar la negociación.`;
+  }
+
+  // Posición en la barra (0–100%)
+  const barMin = p25 * 0.7;
+  const barMax = p75 * 1.4;
+  const barRange = barMax - barMin;
+  const posUsuario = Math.min(100, Math.max(0, (m2Usuario - barMin) / barRange * 100));
+  const posMediana = Math.min(100, Math.max(0, (med - barMin) / barRange * 100));
+  const barLeft = Math.min(100, Math.max(0, (p25 - barMin) / barRange * 100));
+  const barWidth = Math.min(100 - barLeft, (p75 - p25) / barRange * 100);
+
+  // Factores que suben/bajan el precio
+  const factoresUp = [], factoresDown = [];
+  const s = z.scores;
+  const amenArr = [...amenidades];
+
+  if (s.seguridad >= 7)    factoresUp.push('Seguridad alta en la zona sostiene precios.');
+  if (s.seguridad <= 4)    factoresDown.push('Seguridad baja limita el techo de precios.');
+  if (s.conectividad >= 8) factoresUp.push('Excelente conectividad y transporte público.');
+  if (s.conectividad <= 4) factoresDown.push('Conectividad limitada reduce la demanda.');
+  if (s.inversion >= 8)    factoresUp.push('Alta demanda de inversión en la zona.');
+  if (s.calidad >= 8)      factoresUp.push('Alta calidad de vida y ambiente.');
+  if (s.calidad <= 3)      factoresDown.push('Calidad ambiental baja presiona precios.');
+  if (m.pct_gimnasio >= 50) factoresUp.push(`Gimnasio presente en ${m.pct_gimnasio}% de edificios de la zona.`);
+  if (m.pct_piscina >= 30)  factoresUp.push(`Piscina en ${m.pct_piscina}% de edificios — amenidad valorada.`);
+
+  if (amenArr.includes('piscina') && (m.pct_piscina || 0) < 30)
+    factoresUp.push('Tu propiedad tiene piscina — diferenciador en esta zona.');
+  if (amenArr.includes('gimnasio') && (m.pct_gimnasio || 0) < 40)
+    factoresUp.push('Gimnasio incluido — por encima del promedio de la zona.');
+  if (amenArr.includes('amoblado'))
+    factoresUp.push('Amoblado puede subir la renta efectiva un 20–30%.');
+  if (!amenArr.includes('piscina') && !amenArr.includes('gimnasio') && !amenArr.includes('seguridad'))
+    factoresDown.push('Sin amenidades declaradas — el precio debería estar cerca del P25.');
+
+  // Mercado de referencia
+  const refCells = modo === 'venta'
+    ? [
+        { val: '$' + (m.precio_venta_p25_usd || '—').toLocaleString(), lbl: 'P25 precio total' },
+        { val: '$' + (m.precio_venta_mediana_usd || '—').toLocaleString(), lbl: 'Mediana precio total' },
+        { val: '$' + (m.precio_venta_p75_usd || '—').toLocaleString(), lbl: 'P75 precio total' },
+      ]
+    : [
+        { val: rentaRef || '—', lbl: 'Renta mediana zona' },
+        { val: yieldRef || '—', lbl: 'Yield implícito' },
+        { val: m.area_mediana_m2 ? m.area_mediana_m2 + ' m²' : '—', lbl: 'Área mediana zona' },
+      ];
+
+  document.getElementById('pj-result-col').innerHTML = `
+
+    <!-- Veredicto principal -->
+    <div class="pj-veredicto">
+      <div class="pj-veredicto-header">
+        <div class="pj-veredicto-label">Zona ${z.zona_num} · ${z.alias} · ${modo === 'venta' ? 'Venta' : 'Renta'} · ${area} m²</div>
+        <div class="pj-veredicto-title">${precioLabel}</div>
+      </div>
+      <div class="pj-veredicto-body">
+
+        <div class="rango-wrap">
+          <div class="rango-label">Posición en el rango de mercado (precio / m²)</div>
+          <div class="rango-bar-wrap">
+            <div class="rango-bar-mercado" style="left:${barLeft.toFixed(1)}%;width:${barWidth.toFixed(1)}%"></div>
+            <div class="rango-bar-mediana" style="left:${posMediana.toFixed(1)}%"></div>
+            <div class="rango-bar-usuario" style="left:${posUsuario.toFixed(1)}%"></div>
+          </div>
+          <div class="rango-markers">
+            <span>P25 · ${modo==='venta'?'$'+Math.round(p25).toLocaleString():'$'+p25.toFixed(1)}/m²</span>
+            <span>Mediana · ${medLabel}</span>
+            <span>P75 · ${modo==='venta'?'$'+Math.round(p75).toLocaleString():'$'+p75.toFixed(1)}/m²</span>
+          </div>
+          <div style="text-align:center;margin-top:16px">
+            <span class="pj-posicion ${posClass}">${posicion}</span>
+          </div>
+        </div>
+
+        <p class="pj-posicion-note">${nota}</p>
+
+        <div style="margin-top:14px;font-size:11px;color:var(--gray-500);font-weight:500">
+          Tu precio/m²: <strong style="color:var(--black)">${m2Label}</strong>
+          &nbsp;·&nbsp; Mediana de la zona: <strong style="color:var(--black)">${medLabel}</strong>
+          &nbsp;·&nbsp; Diferencia: <strong style="color:var(--black)">${pctDiff > 0 ? '+' : ''}${pctDiff}%</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mercado de referencia -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--gray-500);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:10px">
+        Mercado de referencia · Zona ${z.zona_num} · 2025
+      </div>
+      <div class="pj-mercado-grid">
+        ${refCells.map(c => `
+          <div class="pj-mercado-cell">
+            <div class="pj-mercado-val">${c.val}</div>
+            <div class="pj-mercado-lbl">${c.lbl}</div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gray-500);font-weight:500">
+        Basado en ${m.n_venta || 0} registros de venta y ${m.n_renta || 0} de renta en la zona.
+      </div>
+    </div>
+
+    <!-- Factores de precio -->
+    <div class="pj-factores">
+      <div class="pj-factores-title">Factores que influyen en el precio de esta zona</div>
+      ${factoresUp.slice(0,3).map(f => `
+        <div class="factor-row">
+          <span class="factor-dir factor-up">↑</span>
+          <span class="factor-text">${f}</span>
+        </div>`).join('')}
+      ${factoresDown.slice(0,3).map(f => `
+        <div class="factor-row">
+          <span class="factor-dir factor-down">↓</span>
+          <span class="factor-text">${f}</span>
+        </div>`).join('')}
+      <div style="margin-top:12px;font-size:11px;color:var(--gray-500);font-weight:500;line-height:1.65">
+        Factores que esta herramienta no puede evaluar: estado de la propiedad, piso, orientación, negociación, condiciones del contrato y motivación del vendedor.
+      </div>
+    </div>
+
+    <!-- Contexto de la zona -->
+    <div class="pj-zona-ctx">
+      <div class="pj-zona-ctx-title">Calificación Umbral · Zona ${z.zona_num}</div>
+      <div class="pj-zona-scores">
+        ${Object.entries(DIMS_LABELS).map(([k, label]) => {
+          const val = z.scores[k];
+          return `
+            <div class="pj-zona-score-row">
+              <span class="pj-zona-score-name">${label}</span>
+              <span class="pj-zona-score-val sc-${val}">${val}/10</span>
+            </div>`;
+        }).join('')}
+      </div>
+      <a class="pj-zona-link" href="${z.url_umbral}" target="_blank" rel="noopener">
+        <span>Análisis completo Zona ${z.zona_num}</span><span>↗</span>
+      </a>
+    </div>
+  `;
+}
+
+function resetResult() {
+  document.getElementById('pj-result-col').innerHTML = `
+    <div class="pj-placeholder">
+      <div class="pj-placeholder-icon">◈</div>
+      <div class="pj-placeholder-text">Completá el formulario para ver dónde cae tu precio en el mercado de esa zona.</div>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>

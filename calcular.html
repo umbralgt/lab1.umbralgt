@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadoras — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="Calculadoras de compra y alquiler con semáforo financiero. Convertí un precio en números reales antes de decidir.">
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.calc-wrap {
+  padding-top: var(--nav-h);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+.calc-hero {
+  padding: 48px 40px 36px;
+  border-bottom: var(--border-soft);
+  max-width: 960px;
+}
+.calc-eyebrow {
+  font-size: 10px; font-weight: 600; color: var(--gray-500);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+}
+.calc-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.calc-title {
+  font-size: clamp(28px,4vw,44px); font-weight:700;
+  letter-spacing:-0.03em; line-height:1.05; margin-bottom:12px;
+}
+/* H1 siempre bold — sin mezcla de pesos */
+.calc-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:480px; }
+
+/* ── Toggle compra / alquiler ────────────────────────────────── */
+.calc-toggle {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid var(--black);
+  flex-shrink: 0;
+}
+.calc-tab {
+  padding: 16px 32px;
+  font-family: var(--font);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; border: none; background: var(--white);
+  color: var(--gray-500); transition: var(--trans);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.calc-tab:first-child { border-right: var(--border-soft); }
+.calc-tab.active { color: var(--black); border-bottom-color: var(--black); }
+
+/* ── Layout dos columnas ─────────────────────────────────────── */
+.calc-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.calc-col-form {
+  padding: 36px 40px;
+  border-right: var(--border-soft);
+  overflow-y: auto;
+}
+.calc-col-result {
+  padding: 36px 40px;
+  background: var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Formulario ──────────────────────────────────────────────── */
+.calc-section { display: none; }
+.calc-section.active { display: block; }
+
+.form-row { margin-bottom: 18px; }
+.form-label {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--black); margin-bottom: 5px;
+}
+.form-input {
+  width: 100%; box-sizing: border-box;
+  border: var(--border-soft); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-family: var(--font); font-size: 13px;
+  font-weight: 500; outline: none; background: var(--white);
+  color: var(--black); transition: var(--trans);
+}
+.form-input:focus { border-color: var(--black); background: var(--white); }
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.form-help {
+  font-size: 11px; color: var(--gray-500);
+  margin-top: 4px; line-height: 1.55; font-weight: 500;
+}
+.form-optional {
+  font-size: 10px; color: var(--gray-400); font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  margin-left: 6px;
+}
+
+.form-divider {
+  border: none; border-top: var(--border-soft);
+  margin: 20px 0;
+}
+
+.calc-submit {
+  width: 100%; padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: var(--border-strong);
+  background: var(--black); color: var(--white);
+  font-family: var(--font); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; transition: var(--trans); margin-top: 8px;
+}
+.calc-submit:hover { opacity: 0.85; }
+
+.calc-error {
+  font-size: 12px; color: #c0392b;
+  margin-top: 10px; font-weight: 500;
+}
+
+/* ── Resultado ───────────────────────────────────────────────── */
+.result-placeholder {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; text-align: center;
+  color: var(--gray-400); gap: 12px;
+}
+.result-placeholder-icon { font-size: 24px; opacity: 0.4; }
+.result-placeholder-text { font-size: 12px; font-weight: 500; line-height: 1.6; }
+
+.result-section { display: none; }
+.result-section.visible { display: flex; flex-direction: column; gap: 20px; }
+
+/* Números resultado */
+.result-nums {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+.result-num { }
+.result-num-val {
+  font-size: 24px; font-weight: 700; letter-spacing:-0.03em; line-height:1;
+  border-bottom: 1.5px solid var(--gray-300);
+  display: inline-block; padding-bottom: 3px;
+}
+.result-num-lbl {
+  font-size: 10px; font-weight: 600; color: var(--gray-500);
+  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 5px;
+}
+
+/* Semáforo */
+.semaforo {
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  border: 1.5px solid;
+}
+.semaforo-label {
+  font-size: 12px; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.01em;
+}
+.semaforo-text {
+  font-size: 12px; line-height: 1.65; font-weight: 400;
+}
+
+.sem-green { background: #e7f6ec; border-color: #1f7a3b; color: #1f7a3b; }
+.sem-yellow { background: #fff7da; border-color: #c79200; color: #c79200; }
+.sem-red { background: #ffe3e3; border-color: #c0392b; color: #c0392b; }
+
+/* Porcentaje badge */
+.result-pct {
+  background: var(--white);
+  border: var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 12px; font-weight: 500; color: var(--gray-700);
+  line-height: 1.6;
+}
+
+/* Disclaimer */
+.calc-disclaimer {
+  font-size: 11px; color: var(--gray-500);
+  line-height: 1.6; font-weight: 500;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.calc-footer-note {
+  padding: 16px 40px;
+  border-top: var(--border-soft);
+  font-size: 11px; color: var(--gray-500);
+  font-weight: 500; flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 780px) {
+  .calc-body { grid-template-columns: 1fr; }
+  .calc-col-form { border-right: none; border-bottom: var(--border-soft); padding: 28px 20px; }
+  .calc-col-result { padding: 28px 20px; }
+  .calc-hero { padding: 36px 20px 28px; }
+  .calc-tab { padding: 14px 20px; }
+  .calc-footer-note { padding: 16px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Navegación principal">
+  <a class="nav-logo" href="index.html" aria-label="Umbral Lab 1 inicio">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod active" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="calc-wrap">
+
+  <div class="calc-hero">
+    <div class="calc-eyebrow">Herramienta · Calculadoras</div>
+    <h1 class="calc-title">Convertí un precio en números reales.</h1>
+    <p class="calc-sub">Escenarios rápidos de compra y alquiler con semáforo financiero. No reemplaza a un banco ni a una asesoría — sirve para pensar con más claridad antes de decidir.</p>
+  </div>
+
+  <!-- Toggle -->
+  <div class="calc-toggle">
+    <button class="calc-tab active" id="tab-compra" onclick="setTab('compra')">Compra</button>
+    <button class="calc-tab" id="tab-alquiler" onclick="setTab('alquiler')">Alquiler</button>
+  </div>
+
+  <!-- Cuerpo -->
+  <div class="calc-body">
+
+    <!-- Columna formulario -->
+    <div class="calc-col-form">
+
+      <!-- ══ COMPRA ══ -->
+      <div class="calc-section active" id="sec-compra">
+
+        <div class="form-row">
+          <label class="form-label" for="umc-currency">Moneda</label>
+          <select id="umc-currency" class="form-input form-select">
+            <option value="GTQ">Quetzales (Q)</option>
+            <option value="USD">Dólares (US$)</option>
+          </select>
+          <div class="form-help">Solo afecta cómo se muestran los montos. Los cálculos funcionan igual en ambas monedas.</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="umc-price">Precio del inmueble</label>
+          <input type="number" id="umc-price" class="form-input" min="0" step="0.01" placeholder="Ej. 900,000">
+          <div class="form-help">Precio de lista o aproximado del proyecto en evaluación.</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="umc-downpayment">Enganche (%)</label>
+          <input type="number" id="umc-downpayment" class="form-input" min="0" max="99" step="0.01" placeholder="Ej. 20">
+          <div class="form-help">Porcentaje del precio pagado al inicio. Ej.: 20 = 20% de enganche.</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="umc-rate">Tasa de interés anual (%)</label>
+          <input type="number" id="umc-rate" class="form-input" min="0" step="0.01" placeholder="Ej. 8.5">
+          <div class="form-help">Usá la tasa ofrecida por el banco o una aproximación razonable según mercado.</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="umc-years">Plazo del crédito (años)</label>
+          <input type="number" id="umc-years" class="form-input" min="1" step="1" placeholder="Ej. 20">
+          <div class="form-help">Años estimados para pagar el crédito hipotecario.</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="umc-fixed">Gastos mensuales del inmueble</label>
+          <input type="number" id="umc-fixed" class="form-input" min="0" step="0.01" placeholder="Ej. 800">
+          <div class="form-help">Mantenimiento, condominio, parqueos adicionales u otros cobros fijos del inmueble. No son gastos personales.</div>
+        </div>
+
+        <hr class="form-divider">
+
+        <div class="form-row">
+          <label class="form-label" for="umc-income">
+            Ingreso mensual neto del hogar
+            <span class="form-optional">Opcional</span>
+          </label>
+          <input type="number" id="umc-income" class="form-input" min="0" step="0.01" placeholder="Ej. 15,000">
+          <div class="form-help">Si se ingresa, se muestra qué porcentaje del ingreso representaría la cuota total.</div>
+        </div>
+
+        <button class="calc-submit" onclick="calcularCompra()">Calcular escenario de compra</button>
+        <div class="calc-error" id="umc-error"></div>
+
+      </div>
+
+      <!-- ══ ALQUILER ══ -->
+      <div class="calc-section" id="sec-alquiler">
+
+        <div class="form-row">
+          <label class="form-label" for="urc-income">Ingreso mensual neto del hogar</label>
+          <input type="number" id="urc-income" class="form-input" min="0" step="0.01" placeholder="Ej. 15,000">
+          <div class="form-help">Ingreso mensual neto (después de impuestos).</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="urc-rent">Alquiler mensual</label>
+          <input type="number" id="urc-rent" class="form-input" min="0" step="0.01" placeholder="Ej. 4,500">
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="urc-fixed">Gastos fijos del inmueble</label>
+          <input type="number" id="urc-fixed" class="form-input" min="0" step="0.01" placeholder="Ej. 800">
+          <div class="form-help">Condominio, parqueos adicionales, cuotas obligatorias, etc. Si no existen, dejar en blanco.</div>
+        </div>
+
+        <hr class="form-divider">
+
+        <div class="form-row">
+          <label class="form-label" for="urc-savings">
+            Ahorro mensual para patrimonio
+            <span class="form-optional">Opcional</span>
+          </label>
+          <input type="number" id="urc-savings" class="form-input" min="0" step="0.01" placeholder="Ej. 1,000">
+          <div class="form-help">Campo opcional para ver el total de vivienda + ahorro sobre el ingreso.</div>
+        </div>
+
+        <button class="calc-submit" onclick="calcularAlquiler()">Calcular carga de alquiler</button>
+        <div class="calc-error" id="urc-error"></div>
+
+      </div>
+    </div>
+
+    <!-- Columna resultado -->
+    <div class="calc-col-result" id="result-col">
+
+      <div id="result-placeholder" class="result-placeholder">
+        <div class="result-placeholder-icon">◎</div>
+        <div class="result-placeholder-text">Completá el formulario<br>y hacé clic en calcular.</div>
+      </div>
+
+      <div id="result-content" class="result-section">
+
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--gray-500);margin-bottom:14px;padding-bottom:8px;border-bottom:var(--border-soft)" id="result-title">Resultado</div>
+          <div class="result-nums" id="result-nums"></div>
+        </div>
+
+        <div id="semaforo-wrap" style="display:none">
+          <div class="semaforo" id="semaforo-box">
+            <div class="semaforo-label" id="semaforo-label"></div>
+            <div class="semaforo-text" id="semaforo-text"></div>
+          </div>
+        </div>
+
+        <div class="result-pct" id="result-pct" style="display:none"></div>
+
+        <div class="calc-disclaimer">
+          Resultados aproximados. Pueden variar según condiciones reales del crédito o contrato.
+          Esta calculadora sirve para convertir un precio en un escenario concreto y pensar con más claridad.
+          No reemplaza a un banco ni a una asesoría financiera.
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="calc-footer-note">
+    ( UMBRAL ) · Los cálculos se hacen en tu navegador. Ningún dato ingresado se almacena ni se envía.
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Calculadoras
+// Lógica original preservada íntegramente.
+// ══════════════════════════════════════════════════════════════
+
+// ── Tab toggle ────────────────────────────────────────────────
+function setTab(tab) {
+  document.getElementById('sec-compra').classList.toggle('active', tab === 'compra');
+  document.getElementById('sec-alquiler').classList.toggle('active', tab === 'alquiler');
+  document.getElementById('tab-compra').classList.toggle('active', tab === 'compra');
+  document.getElementById('tab-alquiler').classList.toggle('active', tab === 'alquiler');
+  resetResult();
+}
+
+function resetResult() {
+  document.getElementById('result-placeholder').style.display = 'flex';
+  document.getElementById('result-content').classList.remove('visible');
+  document.getElementById('semaforo-wrap').style.display = 'none';
+  document.getElementById('result-pct').style.display = 'none';
+  document.getElementById('umc-error').textContent = '';
+  document.getElementById('urc-error').textContent = '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmtMoney(v) {
+  if (isNaN(v)) return '';
+  return v.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPct(v) {
+  if (isNaN(v)) return '';
+  return v.toLocaleString('es-GT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+function calcMensual(principal, annualRate, years) {
+  const n = years * 12;
+  const r = annualRate / 100 / 12;
+  if (n <= 0) return NaN;
+  if (r === 0) return principal / n;
+  const factor = Math.pow(1 + r, n);
+  return principal * r * factor / (factor - 1);
+}
+
+// ── Semáforo ──────────────────────────────────────────────────
+function showSemaforo(pct, tipo) {
+  const box   = document.getElementById('semaforo-box');
+  const label = document.getElementById('semaforo-label');
+  const text  = document.getElementById('semaforo-text');
+  const wrap  = document.getElementById('semaforo-wrap');
+
+  box.className = 'semaforo';
+
+  let cls, lbl, exp;
+
+  if (tipo === 'compra') {
+    if (pct <= 25) {
+      cls = 'sem-green';
+      lbl = 'Zona verde — carga manejable';
+      exp = 'La cuota cae en un rango razonable respecto al ingreso ingresado. ' +
+            'Aun así, conviene revisar el resto del presupuesto (deudas, imprevistos y ahorro) ' +
+            'y confirmar que el inmueble y su ubicación responden a lo que se busca.';
+    } else if (pct <= 35) {
+      cls = 'sem-yellow';
+      lbl = 'Zona amarilla — revisar con calma';
+      exp = 'La cuota ocupa una parte importante del ingreso. No necesariamente invalida la decisión, ' +
+            'pero sí invita a probar otros escenarios (plazo, enganche, precio) y revisar margen real ' +
+            'para vida diaria, ahorro y cambios futuros.';
+    } else {
+      cls = 'sem-red';
+      lbl = 'Zona roja — alerta de carga alta';
+      exp = 'La cuota consumiría una porción muy alta del ingreso. Eso vuelve más frágil el escenario ante ' +
+            'cambios de ingreso, emergencias o variaciones de tasa, y puede dificultar sostener ahorro. ' +
+            'No es una orden de no comprar; es una señal para replantear supuestos, opciones y tiempos.';
+    }
+  } else {
+    if (pct <= 25) {
+      cls = 'sem-green';
+      lbl = 'Zona verde — carga manejable';
+      exp = 'El costo de vivienda cae en un rango razonable respecto al ingreso ingresado. ' +
+            'Aun así, conviene revisar el presupuesto completo (otras deudas, imprevistos y ahorro) ' +
+            'y confirmar que el lugar responde a lo que se busca.';
+    } else if (pct <= 35) {
+      cls = 'sem-yellow';
+      lbl = 'Zona amarilla — revisar con calma';
+      exp = 'La vivienda ocupa una parte importante del ingreso. No necesariamente invalida la decisión, ' +
+            'pero sí invita a revisar margen real y probar alternativas (renta, gastos, ubicación o condiciones).';
+    } else {
+      cls = 'sem-red';
+      lbl = 'Zona roja — alerta de carga alta';
+      exp = 'Una porción muy alta del ingreso se destina a vivienda. Eso vuelve más frágil el escenario ante ' +
+            'subidas de renta, cambios de ingreso o emergencias y puede dificultar sostener ahorro. ' +
+            'No es una orden de mudarse mañana; es una señal para replantear números y opciones.';
+    }
+  }
+
+  box.classList.add(cls);
+  label.textContent = lbl;
+  text.textContent  = exp;
+  wrap.style.display = 'block';
+}
+
+function showResult(nums, pctHtml) {
+  document.getElementById('result-placeholder').style.display = 'none';
+  document.getElementById('result-content').classList.add('visible');
+
+  const numsEl = document.getElementById('result-nums');
+  numsEl.innerHTML = nums.map(n => `
+    <div class="result-num">
+      <div class="result-num-val">${n.val}</div>
+      <div class="result-num-lbl">${n.lbl}</div>
+    </div>`).join('');
+
+  if (pctHtml) {
+    const pctEl = document.getElementById('result-pct');
+    pctEl.innerHTML = pctHtml;
+    pctEl.style.display = 'block';
+  }
+}
+
+// ── Calculadora compra ────────────────────────────────────────
+function calcularCompra() {
+  const errEl = document.getElementById('umc-error');
+  errEl.textContent = '';
+  resetResult();
+
+  const currency    = document.getElementById('umc-currency').value;
+  const sym         = currency === 'USD' ? 'US$' : 'Q';
+  const price       = parseFloat(document.getElementById('umc-price').value);
+  const downPct     = parseFloat(document.getElementById('umc-downpayment').value);
+  const rate        = parseFloat(document.getElementById('umc-rate').value);
+  const years       = parseFloat(document.getElementById('umc-years').value);
+  const fixed       = parseFloat(document.getElementById('umc-fixed').value) || 0;
+  const income      = parseFloat(document.getElementById('umc-income').value);
+
+  if (isNaN(price) || price <= 0 || isNaN(rate) || rate < 0 || isNaN(years) || years <= 0) {
+    errEl.textContent = 'Ingresá precio del inmueble, tasa anual y plazo con valores mayores a 0.';
+    return;
+  }
+  if (isNaN(downPct) || downPct < 0 || downPct >= 100) {
+    errEl.textContent = 'Ingresá un porcentaje de enganche entre 0 y 99.';
+    return;
+  }
+
+  const principal    = price * (1 - downPct / 100);
+  const monthlyCredit= calcMensual(principal, rate, years);
+
+  if (isNaN(monthlyCredit) || monthlyCredit <= 0) {
+    errEl.textContent = 'Revisá tasa y plazo — no fue posible calcular una cuota válida.';
+    return;
+  }
+
+  const total = monthlyCredit + fixed;
+
+  document.getElementById('result-title').textContent = 'Escenario de compra';
+
+  const nums = [
+    { val: sym + ' ' + fmtMoney(principal), lbl: 'Monto a financiar' },
+    { val: sym + ' ' + fmtMoney(monthlyCredit), lbl: 'Cuota mensual crédito' },
+    { val: sym + ' ' + fmtMoney(total), lbl: 'Cuota total mensual' },
+    { val: years + ' años', lbl: 'Plazo' },
+  ];
+
+  let pctHtml = '';
+  if (!isNaN(income) && income > 0) {
+    const pct = (total / income) * 100;
+    pctHtml = `La cuota total representa aproximadamente <strong>${fmtPct(pct)}</strong> del ingreso mensual ingresado.`;
+    showSemaforo(pct, 'compra');
+  } else {
+    pctHtml = 'Al ingresar el ingreso mensual neto, se muestra qué porcentaje del ingreso representaría esta cuota.';
+  }
+
+  showResult(nums, pctHtml);
+}
+
+// ── Calculadora alquiler ──────────────────────────────────────
+function calcularAlquiler() {
+  const errEl = document.getElementById('urc-error');
+  errEl.textContent = '';
+  resetResult();
+
+  const income  = parseFloat(document.getElementById('urc-income').value);
+  const rent    = parseFloat(document.getElementById('urc-rent').value);
+  const fixed   = parseFloat(document.getElementById('urc-fixed').value) || 0;
+  const savings = parseFloat(document.getElementById('urc-savings').value) || 0;
+
+  if (isNaN(income) || income <= 0 || isNaN(rent) || rent <= 0) {
+    errEl.textContent = 'Ingresá ingreso mensual y alquiler con valores mayores a 0.';
+    return;
+  }
+
+  const housingCost = rent + fixed;
+  const housingPct  = (housingCost / income) * 100;
+  const totalCon    = housingCost + savings;
+  const totalPct    = (totalCon / income) * 100;
+
+  document.getElementById('result-title').textContent = 'Escenario de alquiler';
+
+  const nums = [
+    { val: 'Q ' + fmtMoney(housingCost), lbl: 'Total vivienda / mes' },
+    { val: fmtPct(housingPct), lbl: 'Del ingreso mensual' },
+    ...(savings > 0 ? [
+      { val: 'Q ' + fmtMoney(totalCon), lbl: 'Vivienda + ahorro' },
+      { val: fmtPct(totalPct), lbl: 'Del ingreso (con ahorro)' },
+    ] : []),
+  ];
+
+  let pctHtml = `Vivienda (alquiler + gastos fijos) representa aproximadamente <strong>${fmtPct(housingPct)}</strong> del ingreso mensual.`;
+  if (savings > 0) {
+    pctHtml += ` Al sumar ahorro, el total llega a <strong>${fmtPct(totalPct)}</strong>.`;
+  }
+
+  showSemaforo(housingPct, 'alquiler');
+  showResult(nums, pctHtml);
+}
+</script>
+</body>
+</html>

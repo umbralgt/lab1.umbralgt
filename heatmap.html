@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de calor — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="Precios de venta y renta del mercado residencial de Ciudad de Guatemala.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+body { overflow: hidden; }
+
+.heatmap-wrap {
+  display: flex;
+  height: 100vh;
+  padding-top: var(--nav-h);
+  overflow: hidden;
+}
+
+/* ── Panel izquierdo ─────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-right: 1.5px solid var(--black);
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Toggle venta / renta ────────────────────────────────────── */
+.modo-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: var(--border-soft);
+  flex-shrink: 0;
+}
+.modo-btn {
+  padding: 14px 12px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: var(--white);
+  color: var(--gray-500);
+  transition: var(--trans);
+  border-bottom: 2px solid transparent;
+}
+.modo-btn:first-child { border-right: var(--border-soft); }
+.modo-btn.active { color: var(--black); border-bottom-color: var(--black); background: var(--gray-100); }
+#btn-venta.active { border-bottom-color: #1d4ed8; color: #1d4ed8; background: #eff6ff; }
+#btn-renta.active { border-bottom-color: #6d28d9; color: #6d28d9; background: #f5f3ff; }
+
+/* ── KPIs de zona ────────────────────────────────────────────── */
+.zona-panel {
+  padding: 18px 16px;
+  border-bottom: var(--border-soft);
+  flex-shrink: 0;
+  min-height: 120px;
+}
+.zona-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: var(--gray-400);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.6;
+  gap: 8px;
+}
+.zona-placeholder-icon {
+  font-size: 20px;
+  opacity: 0.4;
+}
+.zona-nombre {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  line-height: 1.1;
+}
+.zona-alias {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--gray-600);
+  margin-bottom: 14px;
+}
+.zona-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.kpi { }
+.kpi-val {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border-bottom: 1.5px solid var(--gray-300);
+  display: inline-block;
+  padding-bottom: 2px;
+  line-height: 1;
+}
+.kpi-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--gray-500);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── Filtros ─────────────────────────────────────────────────── */
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+.filter-section {
+  padding: 14px 16px;
+  border-bottom: var(--border-soft);
+}
+
+/* ── Info zoom ───────────────────────────────────────────────── */
+.zoom-indicator {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--white);
+  border: var(--border-strong);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 0.3s;
+}
+
+/* ── Leyenda ─────────────────────────────────────────────────── */
+.map-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 16px;
+  background: var(--white);
+  border: var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  z-index: 10;
+  min-width: 140px;
+}
+.legend-gradient {
+  height: 8px;
+  border-radius: 4px;
+  margin: 6px 0 4px;
+  background: linear-gradient(to right, #f0f0f0, #888, #0a0a0a);
+}
+.legend-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--gray-500);
+  letter-spacing: 0.04em;
+}
+
+/* ── Popup ───────────────────────────────────────────────────── */
+.maplibregl-popup-content {
+  background: var(--white) !important;
+  border: var(--border-strong) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 0 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1) !important;
+  min-width: 220px; max-width: 280px;
+}
+.maplibregl-popup-tip { display: none !important; }
+.maplibregl-popup-close-button { color: var(--gray-500) !important; font-size: 18px !important; right: 12px !important; top: 10px !important; background: none !important; border: none !important; }
+.maplibregl-popup-close-button:hover { color: var(--black) !important; }
+
+.popup-inner { padding: 14px 16px; }
+.popup-eyebrow { font-size: 10px; font-weight: 600; color: var(--gray-500); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+.popup-price { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 2px; }
+.popup-price-sub { font-size: 10px; font-weight: 500; color: var(--gray-500); margin-bottom: 10px; }
+.popup-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; border-bottom: var(--border-muted); }
+.popup-row:last-child { border-bottom: none; }
+.popup-row-lbl { color: var(--gray-500); font-weight: 500; }
+.popup-row-val { color: var(--black); font-weight: 600; }
+
+/* ── Mapa ────────────────────────────────────────────────────── */
+#map { flex: 1; position: relative; }
+
+/* ── Controles ───────────────────────────────────────────────── */
+.maplibregl-ctrl-group { background: var(--white) !important; border: var(--border-strong) !important; border-radius: var(--radius-md) !important; box-shadow: none !important; }
+.maplibregl-ctrl-group button { background: var(--white) !important; color: var(--black) !important; }
+.maplibregl-ctrl-group button:hover { background: var(--gray-100) !important; }
+.maplibregl-ctrl-attrib { display: none !important; }
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.loading-overlay { position: absolute; inset: 0; background: var(--white); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 100; }
+.loading-text { font-size: 11px; font-weight: 600; color: var(--gray-500); letter-spacing: 0.06em; text-transform: uppercase; }
+.loading-bar { width: 120px; height: 2px; background: var(--gray-200); border-radius: 1px; overflow: hidden; }
+.loading-bar-fill { height: 100%; background: var(--black); border-radius: 1px; animation: loading 1.2s ease-in-out infinite; }
+body.modo-venta .chip.active { border-color: #1d4ed8; color: #1d4ed8; background: #eff6ff; }
+body.modo-renta  .chip.active { border-color: #6d28d9; color: #6d28d9; background: #f5f3ff; }
+@keyframes loading { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+
+@media (max-width: 680px) {
+  .sidebar { width: 100%; height: auto; max-height: 200px; border-right: none; border-bottom: 1.5px solid var(--black); flex-shrink: 0; }
+  .heatmap-wrap { flex-direction: column; }
+  .zona-panel { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Navegación principal">
+  <a class="nav-logo" href="index.html" aria-label="Umbral Lab 1 inicio">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod active" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="heatmap-wrap">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" role="complementary" aria-label="Controles del mapa de calor">
+
+    <!-- Toggle venta / renta -->
+    <div class="modo-toggle">
+      <button class="modo-btn active" id="btn-venta" onclick="setModo('venta')">Venta</button>
+      <button class="modo-btn" id="btn-renta" onclick="setModo('renta')">Renta</button>
+    </div>
+
+    <!-- KPIs de zona seleccionada -->
+    <div class="zona-panel" id="zona-panel">
+      <div class="zona-placeholder">
+        <div class="zona-placeholder-icon">◑</div>
+        <div>Hacé clic en una zona<br>para ver sus datos de mercado.</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="panel-scroll">
+      <div class="filter-section">
+        <div class="panel-section-title" style="font-size:10px;font-weight:600;color:var(--gray-500);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:10px">Precio / m²</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px" id="chips-rango">
+          <span class="chip" data-rango="$2,000+/m²">$2,000+</span>
+          <span class="chip" data-rango="$1,500–2,000/m²">$1,500–2,000</span>
+          <span class="chip" data-rango="$1,000–1,500/m²">$1,000–1,500</span>
+          <span class="chip" data-rango="Menos de $1,000/m²">&lt;$1,000</span>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="panel-section-title" style="font-size:10px;font-weight:600;color:var(--gray-500);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:10px">Tipo de propiedad</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px" id="chips-tipo">
+          <span class="chip" data-tipo="Apartamento">Apartamento</span>
+          <span class="chip" data-tipo="Casa">Casa</span>
+          <span class="chip" data-tipo="Penthouse">Penthouse</span>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="panel-section-title" style="font-size:10px;font-weight:600;color:var(--gray-500);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px">Precio desde (USD)</div>
+        <div class="range-row">
+          <input type="number" id="precio-min" placeholder="Mín" min="0" step="10000">
+          <input type="number" id="precio-max" placeholder="Máx" min="0" step="10000">
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <button class="btn-reset" id="btn-reset">Limpiar filtros</button>
+      </div>
+
+      <!-- Nota editorial -->
+      <div style="padding:14px 16px;border-top:var(--border-soft)">
+        <div style="font-size:10px;color:var(--gray-500);line-height:1.7;font-weight:500">
+          <strong style="color:var(--gray-700)">Zoom alejado</strong> — colores por precio/m² mediano de cada zona.<br>
+          <strong style="color:var(--gray-700)">Zoom acercado</strong> — puntos individuales del mercado.<br><br>
+          Datos del mercado residencial · Ciudad de Guatemala · 2025.<br>
+          Sirve como referencia, no como promesa comercial.
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Mapa -->
+  <div id="map" role="main" aria-label="Mapa de calor de precios inmobiliarios">
+
+    <div class="loading-overlay" id="loading">
+      <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+      <div class="loading-text">Cargando datos...</div>
+    </div>
+
+    <!-- Indicador de zoom -->
+    <div class="zoom-indicator" id="zoom-indicator">Vista ciudad — hacé zoom para ver propiedades</div>
+
+    <!-- Leyenda -->
+    <div class="map-legend">
+      <div class="legend-title" id="legend-title">Precio / m² mediano</div>
+      <div class="legend-gradient" id="legend-gradient"></div>
+      <div class="legend-range" id="legend-range">
+        <span id="legend-min">Menor</span>
+        <span id="legend-max">Mayor</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Heatmap
+// Capa 1 (zoom ≤ 12): Coroplético de zonas por precio/m²
+// Capa 2 (zoom > 12): Puntos individuales del mercado
+// ══════════════════════════════════════════════════════════════
+
+const ZOOM_BREAK = 12.5; // zoom level where layers switch
+
+const state = {
+  modo: 'venta',       // 'venta' | 'renta'
+  ventaData: null,
+  rentaData: null,
+  choropletData: null,
+  geoData: null,
+  filters: { rangos: new Set(), tipos: new Set(), precioMin: 0, precioMax: Infinity },
+  zonaSeleccionada: null,
+  map: null,
+  popup: null,
+};
+
+// ── Color helpers por modo ───────────────────────────────────
+function getModoHeatColors(modo) {
+  if (modo === 'renta') return [
+    'interpolate', ['linear'], ['heatmap-density'],
+    0,   'rgba(245,243,255,0)',
+    0.2, 'rgba(196,181,253,0.6)',
+    0.5, '#8b5cf6',
+    0.8, '#6d28d9',
+    1.0, '#3b0764',
+  ];
+  return [
+    'interpolate', ['linear'], ['heatmap-density'],
+    0,   'rgba(239,246,255,0)',
+    0.2, 'rgba(147,197,253,0.6)',
+    0.5, '#3b82f6',
+    0.8, '#1d4ed8',
+    1.0, '#1e3a8a',
+  ];
+}
+
+function getModoCircleColor(modo) {
+  if (modo === 'renta') return [
+    'interpolate', ['linear'], ['get', 'intensidad'],
+    0, '#c4b5fd', 0.5, '#8b5cf6', 1, '#3b0764'
+  ];
+  return [
+    'interpolate', ['linear'], ['get', 'intensidad'],
+    0, '#93c5fd', 0.5, '#3b82f6', 1, '#1e3a8a'
+  ];
+}
+
+function getModoChoropletColor(modo) {
+  if (modo === 'renta') return [
+    'interpolate', ['linear'], ['get', 'intensidad'],
+    0, '#f5f3ff', 0.25, '#c4b5fd', 0.55, '#8b5cf6', 0.8, '#6d28d9', 1.0, '#3b0764'
+  ];
+  return [
+    'interpolate', ['linear'], ['get', 'intensidad'],
+    0, '#eff6ff', 0.25, '#93c5fd', 0.55, '#3b82f6', 0.8, '#1d4ed8', 1.0, '#1e3a8a'
+  ];
+}
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  state.map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: { osm: {
+        type: 'raster',
+        tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
+        tileSize: 256, maxzoom: 19
+      }},
+      layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+    },
+    center: [-90.513, 14.634],
+    zoom: 11, minZoom: 9, maxZoom: 17,
+  });
+
+  state.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+  state.popup = new maplibregl.Popup({
+    closeButton: true, closeOnClick: false,
+    maxWidth: '300px', offset: 10,
+  });
+
+  try {
+    // Load choroplet and geo first (small files), then heatmap data
+    const [choroplet, geo] = await Promise.all([
+      fetch('data/choroplet.json').then(r => r.json()),
+      fetch('data/zonas_geo.geojson').then(r => r.json()),
+    ]);
+
+    // Load heatmap data in parallel but don't block map init
+    const [venta, renta] = await Promise.all([
+      fetch('data/heatmap_venta.json').then(r => r.json()),
+      fetch('data/heatmap_renta.json').then(r => r.json()),
+    ]);
+
+    state.ventaData   = venta;
+    state.rentaData   = renta;
+    state.choropletData = choroplet;
+    state.geoData     = geo;
+
+    // Update legend range
+    updateLegend();
+
+    state.map.on('load', () => {
+      addChoropletLayer();
+      addPuntosLayer();
+      updateLayerVisibility();
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    state.map.on('zoom', () => {
+      updateLayerVisibility();
+      updateZoomIndicator();
+    });
+
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center;padding:24px;font-size:12px;color:#888;font-family:'Space Grotesk',sans-serif">
+        <div style="font-weight:700;color:#0a0a0a;margin-bottom:8px">Error cargando datos</div>
+        <div>Verificá que Live Server esté activo<br>y la carpeta /data/ esté en su lugar.</div>
+      </div>`;
+  }
+}
+
+// ── Modo venta / renta ────────────────────────────────────────
+function setModo(modo) {
+  state.modo = modo;
+  document.body.className = 'modo-' + modo;
+  document.getElementById('btn-venta').classList.toggle('active', modo === 'venta');
+  document.getElementById('btn-renta').classList.toggle('active', modo === 'renta');
+  updateChoropletColors();
+  updatePuntosData();
+  updateLayerColors();
+  updateLegend();
+  clearZonaPanel();
+}
+
+function updateLayerColors() {
+  const modo = state.modo;
+  if (state.map.getLayer('choroplet-fill')) {
+    state.map.setPaintProperty('choroplet-fill', 'fill-color', getModoChoropletColor(modo));
+  }
+  if (state.map.getLayer('puntos-heat')) {
+    state.map.setPaintProperty('puntos-heat', 'heatmap-color', getModoHeatColors(modo));
+  }
+  if (state.map.getLayer('puntos-circle')) {
+    state.map.setPaintProperty('puntos-circle', 'circle-color', getModoCircleColor(modo));
+  }
+}
+
+// ── Capa 1: Coroplético ───────────────────────────────────────
+function addChoropletLayer() {
+  const geo = state.geoData;
+
+  // Enrich GeoJSON with market data
+  const enriched = {
+    ...geo,
+    features: geo.features.map(feat => {
+      const zNum = feat.properties.zona_num;
+      const zonaData = state.choropletData.zonas.find(z => z.zona_num === zNum);
+      return {
+        ...feat,
+        properties: {
+          ...feat.properties,
+          ...(zonaData || {}),
+          intensidad: zonaData ? zonaData.intensidad : 0,
+        }
+      };
+    })
+  };
+
+  state.map.addSource('choroplet', { type: 'geojson', data: enriched });
+
+  // Fill — color by intensidad (dark = higher price)
+  state.map.addLayer({
+    id: 'choroplet-fill', type: 'fill', source: 'choroplet',
+    paint: {
+      'fill-color': getModoChoropletColor('venta'),
+      'fill-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        10, 0.7,
+        12.5, 0.4,
+        13, 0
+      ]
+    }
+  });
+
+  // Stroke
+  state.map.addLayer({
+    id: 'choroplet-line', type: 'line', source: 'choroplet',
+    paint: {
+      'line-color': '#0a0a0a',
+      'line-width': 1,
+      'line-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        10, 0.4,
+        12.5, 0.2,
+        13, 0
+      ]
+    }
+  });
+
+  // Labels — zona number
+  state.map.addLayer({
+    id: 'choroplet-label', type: 'symbol', source: 'choroplet',
+    layout: {
+      'text-field': ['concat', 'Z', ['to-string', ['get', 'zona_num']]],
+      'text-font': ['Open Sans Bold'],
+      'text-size': 11,
+    },
+    paint: {
+      'text-color': '#fff',
+      'text-halo-color': '#0a0a0a',
+      'text-halo-width': 1,
+      'text-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        10, 0.9, 12.5, 0.3, 13, 0
+      ]
+    }
+  });
+
+  // Click → show zona data
+  state.map.on('mouseenter', 'choroplet-fill', () => { state.map.getCanvas().style.cursor = 'pointer'; });
+  state.map.on('mouseleave', 'choroplet-fill', () => { state.map.getCanvas().style.cursor = ''; });
+  state.map.on('click', 'choroplet-fill', (e) => {
+    if (state.map.getZoom() > ZOOM_BREAK) return; // at high zoom, points take over
+    const props = e.features[0].properties;
+    if (props.zona_num) showZonaPanel(props);
+  });
+
+  // Click outside → clear
+  state.map.on('click', (e) => {
+    const feat = state.map.queryRenderedFeatures(e.point, { layers: ['choroplet-fill','puntos-circle'] });
+    if (!feat.length) clearZonaPanel();
+  });
+}
+
+function updateChoropletColors() {
+  // When switching venta/renta, recalculate intensities based on relevant metric
+  if (!state.map.getSource('choroplet')) return;
+  const zonas = state.choropletData.zonas;
+
+  const values = zonas.map(z =>
+    state.modo === 'venta' ? z.precio_m2_mediana_usd : (z.renta_mediana_usd ? z.renta_mediana_usd / (z.area_mediana_m2 || 100) : null)
+  ).filter(v => v != null);
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+
+  const enriched = {
+    ...state.geoData,
+    features: state.geoData.features.map(feat => {
+      const zNum = feat.properties.zona_num;
+      const zonaData = zonas.find(z => z.zona_num === zNum);
+      let intensidad = 0;
+      if (zonaData) {
+        const val = state.modo === 'venta'
+          ? zonaData.precio_m2_mediana_usd
+          : (zonaData.renta_mediana_usd ? zonaData.renta_mediana_usd / (zonaData.area_mediana_m2 || 100) : null);
+        if (val) intensidad = (val - min) / (max - min);
+      }
+      return { ...feat, properties: { ...feat.properties, ...(zonaData || {}), intensidad } };
+    })
+  };
+  state.map.getSource('choroplet').setData(enriched);
+}
+
+// ── Zona panel ────────────────────────────────────────────────
+function showZonaPanel(props) {
+  state.zonaSeleccionada = props.zona_num;
+  const m = props; // props has the merged data
+
+  const fmt = v => v ? '$' + Number(v).toLocaleString() : '—';
+  const fmtPct = v => v ? v + '%' : '—';
+
+  const kpis = state.modo === 'venta' ? [
+    { val: fmt(m.precio_venta_mediana_usd), lbl: 'Venta mediana' },
+    { val: fmt(m.precio_m2_mediana_usd) + '/m²', lbl: 'Precio / m²' },
+    { val: fmt(m.renta_mediana_usd) + '/mes', lbl: 'Renta mediana' },
+    { val: fmtPct(m.yield_bruto_pct), lbl: 'Yield bruto' },
+  ] : [
+    { val: fmt(m.renta_mediana_usd) + '/mes', lbl: 'Renta mediana' },
+    { val: m.area_mediana_m2 ? m.area_mediana_m2 + ' m²' : '—', lbl: 'Área mediana' },
+    { val: fmt(m.precio_venta_mediana_usd), lbl: 'Venta mediana' },
+    { val: fmtPct(m.yield_bruto_pct), lbl: 'Yield bruto' },
+  ];
+
+  const n = state.modo === 'venta' ? m.n_venta : m.n_renta;
+
+  document.getElementById('zona-panel').innerHTML = `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px">
+      <div class="zona-nombre">Zona ${m.zona_num}</div>
+      <div style="font-size:10px;font-weight:600;color:var(--gray-500);letter-spacing:0.05em">${n || '—'} reg.</div>
+    </div>
+    <div class="zona-alias">${m.alias || m.nombre || ''}</div>
+    <div class="zona-kpis">
+      ${kpis.map(k => `
+        <div class="kpi">
+          <div class="kpi-val">${k.val}</div>
+          <div class="kpi-lbl">${k.lbl}</div>
+        </div>`).join('')}
+    </div>
+    ${m.url_umbral ? `<a href="${m.url_umbral}" target="_blank" rel="noopener"
+      style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:1px">
+      Análisis completo ↗
+    </a>` : ''}
+  `;
+}
+
+function clearZonaPanel() {
+  state.zonaSeleccionada = null;
+  document.getElementById('zona-panel').innerHTML = `
+    <div class="zona-placeholder">
+      <div class="zona-placeholder-icon">◑</div>
+      <div>Hacé clic en una zona<br>para ver sus datos de mercado.</div>
+    </div>`;
+}
+
+// ── Capa 2: Puntos del mercado ────────────────────────────────
+function addPuntosLayer() {
+  const geojson = puntosToGeoJSON(getFilteredPuntos());
+
+  state.map.addSource('puntos', { type: 'geojson', data: geojson });
+
+  // Heatmap GL layer (intensity based on price/m2)
+  state.map.addLayer({
+    id: 'puntos-heat', type: 'heatmap', source: 'puntos',
+    paint: {
+      'heatmap-weight': ['interpolate', ['linear'], ['get', 'intensidad'], 0, 0, 1, 1],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 12, 0.6, 15, 1.5],
+      'heatmap-color': getModoHeatColors('venta'),
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 20, 13, 40, 15, 60],
+      'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 13, 0.75, 15, 0.6],
+    }
+  });
+
+  // Individual circles (visible at high zoom)
+  state.map.addLayer({
+    id: 'puntos-circle', type: 'circle', source: 'puntos',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 8],
+      'circle-color': getModoCircleColor('venta'),
+      'circle-stroke-width': 1,
+      'circle-stroke-color': '#fff',
+      'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13, 0.85],
+    }
+  });
+
+  // Click en punto → popup
+  state.map.on('mouseenter', 'puntos-circle', () => { state.map.getCanvas().style.cursor = 'pointer'; });
+  state.map.on('mouseleave', 'puntos-circle', () => { state.map.getCanvas().style.cursor = ''; });
+  state.map.on('click', 'puntos-circle', (e) => {
+    const p = e.features[0].properties;
+    const coords = e.features[0].geometry.coordinates;
+    showPuntoPopup(p, coords);
+  });
+}
+
+function showPuntoPopup(p, coords) {
+  const isventa = state.modo === 'venta';
+  const precio = p.precio_usd ? '$' + Number(p.precio_usd).toLocaleString() : '—';
+  const m2 = p.m2_usd ? '$' + Number(p.m2_usd).toLocaleString() + '/m²' : '—';
+  const tipoLabel = p.tipo || '';
+  const segLabel = p.segmento || '';
+
+  const html = `
+    <div class="popup-inner">
+      <div class="popup-eyebrow">${p.zona ? 'Z' + p.zona : ''}${tipoLabel ? ' · ' + tipoLabel : ''}</div>
+      <div class="popup-price">${precio}</div>
+      <div class="popup-price-sub">${isventa ? 'precio de venta' : 'renta mensual'}</div>
+      ${isventa && p.m2_usd ? `<div class="popup-row"><span class="popup-row-lbl">Precio / m²</span><span class="popup-row-val">${m2}</span></div>` : ''}
+      ${p.hab ? `<div class="popup-row"><span class="popup-row-lbl">Habitaciones</span><span class="popup-row-val">${p.hab}</span></div>` : ''}
+      ${p.area ? `<div class="popup-row"><span class="popup-row-lbl">Área</span><span class="popup-row-val">${p.area} m²</span></div>` : ''}
+      ${segLabel ? `<div class="popup-row"><span class="popup-row-lbl">Rango precio/m²</span><span class="popup-row-val">${segLabel}</span></div>` : ''}
+    </div>
+  `;
+  state.popup.setLngLat(coords).setHTML(html).addTo(state.map);
+}
+
+function getFilteredPuntos() {
+  const data = state.modo === 'venta' ? state.ventaData : state.rentaData;
+  if (!data) return [];
+  const { rangos, tipos, precioMin, precioMax } = state.filters;
+
+  const SEG_MAP = {'Menos de $1,000/m²':1,'$1,000–1,500/m²':2,'$1,500–2,000/m²':3,'$2,000+/m²':4};
+  const TIPO_MAP = {'Apartamento':'A','Casa':'C','Penthouse':'P'};
+  return data.puntos.filter(p => {
+    if (rangos.size && !rangos.has(p.s)) return false;
+    if (tipos.size) {
+      const pTipo = TIPO_LABELS[p.t] || p.t || '';
+      if (!tipos.has(pTipo)) return false;
+    }
+    if ((p.p || 0) < precioMin) return false;
+    if ((p.p || Infinity) > precioMax) return false;
+    return true;
+  });
+}
+
+// Segment labels from numeric code
+const SEG_LABELS = {1:'Menos de $1,000/m²',2:'$1,000–1,500/m²',3:'$1,500–2,000/m²',4:'$2,000+/m²'};
+const TIPO_LABELS = {'A':'Apartamento','C':'Casa','P':'Penthouse'};
+
+function puntosToGeoJSON(puntos) {
+  const m2_vals = puntos.map(p => p.m || 0).filter(v => v > 0);
+  const m2_max = m2_vals.length ? Math.max(...m2_vals) : 5000;
+  const m2_min = m2_vals.length ? Math.min(...m2_vals) : 500;
+
+  return {
+    type: 'FeatureCollection',
+    features: puntos.map(p => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [p.o, p.a] },
+      properties: {
+        precio_usd: p.p,
+        m2_usd: p.m || 0,
+        zona: p.z,
+        tipo: TIPO_LABELS[p.t] || p.t || '',
+        hab: p.h,
+        area: p.r,
+        segmento: p.s || '',
+        intensidad: p.m
+          ? Math.min(1, Math.max(0, (p.m - m2_min) / (m2_max - m2_min)))
+          : 0.3,
+      }
+    }))
+  };
+}
+
+function updatePuntosData() {
+  if (!state.map.getSource('puntos')) return;
+  state.map.getSource('puntos').setData(puntosToGeoJSON(getFilteredPuntos()));
+}
+
+// ── Zoom indicator & layer visibility ────────────────────────
+function updateLayerVisibility() {
+  const zoom = state.map.getZoom();
+  const isClose = zoom > ZOOM_BREAK;
+  // Layers have opacity expressions built in — nothing to toggle
+  // Just update the indicator text
+}
+
+function updateZoomIndicator() {
+  const zoom = state.map.getZoom();
+  const el = document.getElementById('zoom-indicator');
+  if (zoom <= ZOOM_BREAK) {
+    el.textContent = 'Vista ciudad — hacé zoom para ver propiedades';
+    el.style.opacity = '1';
+  } else {
+    el.textContent = 'Vista zona — puntos del mercado';
+    el.style.opacity = '0.6';
+  }
+}
+
+// ── Leyenda ───────────────────────────────────────────────────
+function updateLegend() {
+  const data = state.choropletData;
+  if (!data) return;
+  const isVenta = state.modo === 'venta';
+
+  document.getElementById('legend-title').textContent = isVenta ? 'Precio / m² mediano' : 'Renta mensual mediana';
+  document.getElementById('legend-min').textContent = isVenta ? '$' + data.m2_min.toLocaleString() : 'Menor';
+  document.getElementById('legend-max').textContent = isVenta ? '$' + data.m2_max.toLocaleString() : 'Mayor';
+
+  // Update gradient bar color
+  const grad = isVenta
+    ? 'linear-gradient(to right, #eff6ff, #93c5fd, #3b82f6, #1d4ed8, #1e3a8a)'
+    : 'linear-gradient(to right, #f5f3ff, #c4b5fd, #8b5cf6, #6d28d9, #3b0764)';
+  document.getElementById('legend-gradient').style.background = grad;
+}
+
+// ── Filtros ───────────────────────────────────────────────────
+document.querySelectorAll('#chips-rango .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const val = chip.dataset.rango;
+    if (state.filters.rangos.has(val)) { state.filters.rangos.delete(val); chip.classList.remove('active'); }
+    else { state.filters.rangos.add(val); chip.classList.add('active'); }
+    updatePuntosData();
+  });
+});
+
+document.querySelectorAll('#chips-tipo .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const val = chip.dataset.tipo;
+    if (state.filters.tipos.has(val)) { state.filters.tipos.delete(val); chip.classList.remove('active'); }
+    else { state.filters.tipos.add(val); chip.classList.add('active'); }
+    updatePuntosData();
+  });
+});
+
+let priceTimer;
+document.getElementById('precio-min').addEventListener('input', e => {
+  clearTimeout(priceTimer);
+  priceTimer = setTimeout(() => { state.filters.precioMin = parseInt(e.target.value) || 0; updatePuntosData(); }, 400);
+});
+document.getElementById('precio-max').addEventListener('input', e => {
+  clearTimeout(priceTimer);
+  priceTimer = setTimeout(() => { state.filters.precioMax = parseInt(e.target.value) || Infinity; updatePuntosData(); }, 400);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  state.filters = { rangos: new Set(), tipos: new Set(), precioMin: 0, precioMax: Infinity };
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('precio-min').value = '';
+  document.getElementById('precio-max').value = '';
+  updatePuntosData();
+  updateChoropletColors();
+});
+
+document.body.className = 'modo-venta';
+init();
+</script>
+</body>
+</html>

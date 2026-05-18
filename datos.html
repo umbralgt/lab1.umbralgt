@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Datos e histórico — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="22 años de datos del mercado inmobiliario de Ciudad de Guatemala. Serie histórica y sala de lectura.">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.d-wrap { padding-top: var(--nav-h); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.d-hero { padding: 40px 40px 28px; border-bottom: var(--border-soft); }
+.d-eyebrow { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.d-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.d-title { font-size:clamp(26px,3.5vw,40px); font-weight:700; letter-spacing:-0.03em; line-height:1.05; margin-bottom:10px; }
+.d-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:560px; }
+
+/* ── KPIs globales ────────────────────────────────────────────── */
+.d-kpis {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  border-top: 1.5px solid var(--black); border-bottom: var(--border-soft);
+  flex-shrink: 0;
+}
+.d-kpi { padding: 20px 24px; border-right: var(--border-soft); }
+.d-kpi:last-child { border-right: none; }
+.d-kpi-val { font-size:28px; font-weight:700; letter-spacing:-0.03em; line-height:1; border-bottom:1.5px solid var(--gray-300); display:inline-block; padding-bottom:3px; margin-bottom:6px; }
+.d-kpi-lbl { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.06em; text-transform:uppercase; }
+.d-kpi-note { font-size:11px; color:var(--gray-500); margin-top:4px; font-weight:400; }
+
+/* ── Sección ──────────────────────────────────────────────────── */
+.d-section { padding: 36px 40px; border-bottom: var(--border-soft); }
+.d-section-label { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+.d-section-title { font-size:20px; font-weight:700; letter-spacing:-0.02em; margin-bottom:6px; }
+.d-section-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:600px; margin-bottom:24px; }
+
+/* ── Apreciación por zona ─────────────────────────────────────── */
+.apreciacion-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px; margin-bottom: 20px;
+}
+.apreciacion-card {
+  border: 1.5px solid var(--gray-300); border-radius:var(--radius-md);
+  padding: 14px 16px; transition: border-color 0.15s;
+}
+.apreciacion-card:hover { border-color: var(--black); }
+.apreciacion-zona { font-size:11px; font-weight:700; color:var(--gray-500); letter-spacing:0.05em; text-transform:uppercase; margin-bottom:6px; }
+.apreciacion-pct {
+  font-size:22px; font-weight:700; letter-spacing:-0.02em; line-height:1;
+  margin-bottom:4px;
+}
+.apreciacion-rango { font-size:10px; color:var(--gray-500); font-weight:500; }
+.apreciacion-bar { height:3px; background:var(--gray-200); border-radius:2px; margin-top:8px; overflow:hidden; }
+.apreciacion-bar-fill { height:100%; background:var(--black); border-radius:2px; }
+
+/* Tono por apreciación */
+.apr-alta  { border-color:#0a0a0a; }
+.apr-alta  .apreciacion-pct { color:#0a0a0a; }
+.apr-media .apreciacion-pct { color:#555; }
+.apr-baja  .apreciacion-pct { color:#aaa; }
+
+/* ── Gráfica series ───────────────────────────────────────────── */
+.chart-wrap {
+  background: var(--gray-100); border-radius:var(--radius-lg);
+  padding: 24px; margin-bottom: 20px;
+}
+.chart-controls { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.chart-zone-btn {
+  padding: 5px 12px; font-size:10px; font-weight:700; letter-spacing:0.04em;
+  border:1.5px solid var(--gray-300); border-radius:var(--radius-sm);
+  background:var(--white); color:var(--gray-500); cursor:pointer; transition:var(--trans);
+}
+.chart-zone-btn.on { border-color:var(--black); color:var(--black); background:var(--gray-200); }
+.chart-canvas-wrap { height: 280px; position:relative; }
+
+/* ── Sala de lectura ──────────────────────────────────────────── */
+.lectura-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.lectura-card {
+  border: 1.5px solid var(--black); border-radius:var(--radius-lg);
+  overflow:hidden; display:flex; flex-direction:column;
+  text-decoration:none; color:var(--black); transition:opacity 0.15s;
+}
+.lectura-card:hover { opacity:0.85; }
+.lectura-header { background:var(--black); padding:18px 20px; }
+.lectura-tipo { font-size:10px; font-weight:700; color:#555; letter-spacing:0.07em; text-transform:uppercase; margin-bottom:6px; }
+.lectura-titulo { font-size:18px; font-weight:700; color:var(--white); letter-spacing:-0.02em; line-height:1.15; }
+.lectura-body { padding:18px 20px; flex:1; display:flex; flex-direction:column; gap:10px; }
+.lectura-desc { font-size:12px; color:var(--gray-700); line-height:1.65; flex:1; }
+.lectura-stats { display:flex; flex-wrap:wrap; gap:6px; }
+.lectura-stat {
+  padding:3px 8px; background:var(--gray-100); border-radius:4px;
+  font-size:10px; font-weight:700; color:var(--gray-600); letter-spacing:0.03em;
+}
+.lectura-cta {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 20px; border-top:var(--border-soft);
+  font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.d-footer { background:var(--black); padding:28px 40px; margin-top:auto; }
+.d-footer-headline { font-size:20px; font-weight:700; color:var(--white); letter-spacing:-0.02em; margin-bottom:6px; }
+.d-footer-sub { font-size:12px; color:#555; font-style:italic; margin-bottom:20px; }
+.d-footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #1e1e1e; flex-wrap:wrap; gap:10px; }
+.d-footer-meta { font-size:11px; color:#555; font-weight:500; }
+.d-footer-link { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--white); color:var(--black); font-size:11px; font-weight:500; border-radius:var(--radius-md); text-decoration:none; }
+
+@media (max-width:780px) {
+  .d-hero { padding:28px 20px 20px; }
+  .d-kpis { grid-template-columns:1fr 1fr; }
+  .d-section { padding:28px 20px; }
+  .lectura-grid { grid-template-columns:1fr; }
+  .d-footer { padding:24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation">
+  <a class="nav-logo" href="index.html">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod active" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="d-wrap">
+
+  <div class="d-hero">
+    <div class="d-eyebrow">Herramienta · Datos e histórico</div>
+    <h1 class="d-title">22 años de mercado.</h1>
+    <p class="d-sub">Serie histórica de precios por zona, apreciación 2013–2025 y acceso a los documentos de análisis completos. Sin conflicto de interés. Sin nada que vender.</p>
+  </div>
+
+  <!-- KPIs globales -->
+  <div class="d-kpis">
+    <div class="d-kpi">
+      <div class="d-kpi-val">+120%</div>
+      <div class="d-kpi-lbl">Apreciación Z10</div>
+      <div class="d-kpi-note">2013 → 2025 · precio/m²</div>
+    </div>
+    <div class="d-kpi">
+      <div class="d-kpi-val">4.32%</div>
+      <div class="d-kpi-lbl">Cap rate neto</div>
+      <div class="d-kpi-note">Segmento A · 2025</div>
+    </div>
+    <div class="d-kpi">
+      <div class="d-kpi-val">22</div>
+      <div class="d-kpi-lbl">Años de serie</div>
+      <div class="d-kpi-note">2004–2026 · 15 fuentes</div>
+    </div>
+    <div class="d-kpi">
+      <div class="d-kpi-val">1.27M</div>
+      <div class="d-kpi-lbl">Déficit habitacional</div>
+      <div class="d-kpi-note">Unidades · Guatemala</div>
+    </div>
+  </div>
+
+  <!-- Sección 1: Apreciación por zona -->
+  <div class="d-section">
+    <div class="d-section-label">Análisis · 2013–2025</div>
+    <h2 class="d-section-title">Apreciación por zona.</h2>
+    <p class="d-section-sub">Cuánto creció el precio por metro cuadrado en cada zona entre 2013 y 2025. Datos de la serie histórica del mercado residencial de Ciudad de Guatemala.</p>
+
+    <div class="apreciacion-grid" id="apreciacion-grid"></div>
+
+    <div style="font-size:11px;color:var(--gray-500);line-height:1.7;font-weight:500;max-width:560px">
+      Los precios 2013 corresponden al inicio de la serie histórica disponible. Los precios 2025 son medianas del mercado residencial. La apreciación es del precio de oferta — el precio real de cierre puede diferir.
+    </div>
+  </div>
+
+  <!-- Sección 2: Serie histórica interactiva -->
+  <div class="d-section">
+    <div class="d-section-label">Serie histórica · Precio/m² USD</div>
+    <h2 class="d-section-title">Trayectoria 2013–2025.</h2>
+    <p class="d-section-sub">Precio mediano por metro cuadrado en apartamentos. Seleccioná las zonas que querés comparar.</p>
+
+    <div class="chart-wrap">
+      <div class="chart-controls" id="zone-controls"></div>
+      <div class="chart-canvas-wrap">
+        <canvas id="serie-chart"></canvas>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--gray-500);line-height:1.7;font-weight:500">
+      Datos de precio de oferta. 2013–2019 basados en series históricas documentadas. 2020–2025 del mercado residencial activo. Para metodología completa →
+      <a href="https://lab1-analisis.umbralgt.com" target="_blank" rel="noopener" style="color:var(--black);font-weight:700;border-bottom:1px solid var(--black);text-decoration:none">análisis completo ↗</a>
+    </div>
+  </div>
+
+  <!-- Sección 3: Sala de lectura -->
+  <div class="d-section">
+    <div class="d-section-label">Sala de lectura</div>
+    <h2 class="d-section-title">Los documentos completos.</h2>
+    <p class="d-section-sub">Los números rápidos están acá. La narrativa, el contexto, la metodología y el análisis completo están en estos tres documentos. Cada uno responde una pregunta distinta.</p>
+
+    <div class="lectura-grid">
+
+      <a class="lectura-card" href="https://lab1-analisis.umbralgt.com" target="_blank" rel="noopener">
+        <div class="lectura-header">
+          <div class="lectura-tipo">Documento principal</div>
+          <div class="lectura-titulo">Análisis del mercado 2004–2026</div>
+        </div>
+        <div class="lectura-body">
+          <p class="lectura-desc">22 años de historia del mercado inmobiliario de Ciudad de Guatemala. 13 capítulos, 5 partes: contexto económico, precios históricos, rentas, financiamiento, zonas, segmentos y síntesis. Con apéndices, glosario y fuentes.</p>
+          <div class="lectura-stats">
+            <span class="lectura-stat">13 capítulos</span>
+            <span class="lectura-stat">15 fuentes primarias</span>
+            <span class="lectura-stat">2004–2026</span>
+          </div>
+        </div>
+        <div class="lectura-cta">
+          <span>Abrir análisis</span><span>↗</span>
+        </div>
+      </a>
+
+      <a class="lectura-card" href="https://lab1-datos.umbralgt.com" target="_blank" rel="noopener">
+        <div class="lectura-header">
+          <div class="lectura-tipo">Explorador interactivo</div>
+          <div class="lectura-titulo">Explorador de datos</div>
+        </div>
+        <div class="lectura-body">
+          <p class="lectura-desc">Seis módulos interactivos: serie histórica de precios por zona, ranking de zonas 2025, actividad constructiva 2004–2024, calculadora de retorno, evolución de cap rates y datos históricos 2017. Todo con gráficas y filtros.</p>
+          <div class="lectura-stats">
+            <span class="lectura-stat">6 módulos</span>
+            <span class="lectura-stat">Interactivo</span>
+            <span class="lectura-stat">Calculadora de retorno</span>
+          </div>
+        </div>
+        <div class="lectura-cta">
+          <span>Abrir explorador</span><span>↗</span>
+        </div>
+      </a>
+
+      <a class="lectura-card" href="https://lab1-archivo.umbralgt.com" target="_blank" rel="noopener">
+        <div class="lectura-header">
+          <div class="lectura-tipo">Archivo histórico</div>
+          <div class="lectura-titulo">Fotografía del mercado · 2017</div>
+        </div>
+        <div class="lectura-body">
+          <p class="lectura-desc">447 registros reales del mercado de octubre 2017. Antes del boom 2018–2019, antes del COVID, antes de que Zona 13 y Zona 21 existieran como las conocemos hoy. Una referencia histórica del punto de partida.</p>
+          <div class="lectura-stats">
+            <span class="lectura-stat">447 registros reales</span>
+            <span class="lectura-stat">48 proyectos</span>
+            <span class="lectura-stat">9 zonas</span>
+          </div>
+        </div>
+        <div class="lectura-cta">
+          <span>Abrir archivo</span><span>↗</span>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <footer class="d-footer">
+    <div class="d-footer-headline">explorar. contrastar. decidir.</div>
+    <div class="d-footer-sub">Per experimentum.</div>
+    <div class="d-footer-bottom">
+      <span class="d-footer-meta">( UMBRAL ) · Ciudad de Guatemala · 2025–2027</span>
+      <a class="d-footer-link" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+        <span>umbralgt.com</span><span>↗</span>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Datos e histórico
+// ══════════════════════════════════════════════════════════════
+
+// ── Serie histórica por zona ───────────────────────────────────
+// Fuente: serie documentada 2013–2025, precio/m² USD apartamentos
+const AÑOS = [2013, 2015, 2017, 2019, 2021, 2023, 2025];
+
+const SERIES = {
+  'Z10': { label:'Zona 10 · Zona Viva',     data:[1050,1280,1703,1800,2100,2200,2308] },
+  'Z14': { label:'Zona 14',                  data:[1100,1300,1673,1800,1900,2200,2342] },
+  'Z15': { label:'Zona 15 · Vista Hermosa',  data:[950, 1200,1589,1700,1850,2100,2341] },
+  'Z13': { label:'Zona 13 · Oakland',        data:[850, 1100,1312,1500,1750,1900,2175] },
+  'Z16': { label:'Zona 16 · Cayalá',         data:[900, 1100,1602,1700,1800,1900,2000] },
+  'Z4':  { label:'Zona 4',                   data:[800, 1000,1200,1500,1700,1900,2196] },
+  'Z9':  { label:'Zona 9',                   data:[850, 1050,1350,1600,1800,1950,2040] },
+  'Z7':  { label:'Zona 7',                   data:[700, 900, 1501,1200,1300,1420,1535] },
+  'Z11': { label:'Zona 11',                  data:[750, 950, 1100,1400,1600,1800,2037] },
+};
+
+// Activas por defecto
+let activas = new Set(['Z10','Z14','Z15']);
+
+// Colores monocromáticos — escala de grises
+const ZONE_COLORS = {
+  'Z10':'#0a0a0a', 'Z14':'#333', 'Z15':'#555', 'Z13':'#777',
+  'Z16':'#999',    'Z4': '#bbb', 'Z9': '#444', 'Z7': '#666', 'Z11':'#888',
+};
+
+// ── Apreciación por zona ───────────────────────────────────────
+function calcApreciacion() {
+  return Object.entries(SERIES).map(([key, z]) => {
+    const inicio = z.data[0];
+    const fin    = z.data[z.data.length - 1];
+    const pct    = Math.round((fin - inicio) / inicio * 100);
+    return { key, label: z.label, inicio, fin, pct };
+  }).sort((a,b) => b.pct - a.pct);
+}
+
+function renderApreciacion() {
+  const data = calcApreciacion();
+  const maxPct = data[0].pct;
+
+  document.getElementById('apreciacion-grid').innerHTML = data.map(z => {
+    const cls = z.pct >= 150 ? 'apr-alta' : z.pct >= 100 ? 'apr-media' : 'apr-baja';
+    return `
+      <div class="apreciacion-card ${cls}">
+        <div class="apreciacion-zona">${z.key}</div>
+        <div class="apreciacion-pct">+${z.pct}%</div>
+        <div class="apreciacion-rango">$${z.inicio.toLocaleString()} → $${z.fin.toLocaleString()}/m²</div>
+        <div class="apreciacion-bar">
+          <div class="apreciacion-bar-fill" style="width:${Math.round(z.pct/maxPct*100)}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Gráfica de series ──────────────────────────────────────────
+let chart = null;
+
+function buildDatasets() {
+  return Object.entries(SERIES)
+    .filter(([key]) => activas.has(key))
+    .map(([key, z]) => ({
+      label: key,
+      data: z.data,
+      borderColor: ZONE_COLORS[key],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 4,
+      pointBackgroundColor: ZONE_COLORS[key],
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
+      tension: 0.3,
+    }));
+}
+
+function initChart() {
+  const ctx = document.getElementById('serie-chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: AÑOS, datasets: buildDatasets() },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            font: { family:'Space Grotesk', size:11, weight:'600' },
+            color: '#555', boxWidth:12, padding:16,
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}/m²`
+          },
+          bodyFont: { family:'Space Grotesk', size:12 },
+          titleFont: { family:'Space Grotesk', size:11 },
+          backgroundColor: '#0a0a0a', titleColor:'#fff', bodyColor:'#aaa',
+          padding:10, cornerRadius:6,
+        }
+      },
+      scales: {
+        x: {
+          grid: { color:'#f0f0f0' },
+          ticks: { font:{ family:'Space Grotesk', size:11 }, color:'#888' }
+        },
+        y: {
+          grid: { color:'#f0f0f0' },
+          ticks: {
+            font:{ family:'Space Grotesk', size:11 }, color:'#888',
+            callback: v => '$' + v.toLocaleString()
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateChart() {
+  if (!chart) return;
+  chart.data.datasets = buildDatasets();
+  chart.update();
+}
+
+function renderControls() {
+  document.getElementById('zone-controls').innerHTML = Object.entries(SERIES).map(([key]) => `
+    <button class="chart-zone-btn ${activas.has(key) ? 'on' : ''}"
+      onclick="toggleZone('${key}')"
+      style="${activas.has(key) ? 'border-color:'+ZONE_COLORS[key]+';color:'+ZONE_COLORS[key]+';background:#f8f8f8' : ''}">
+      ${key}
+    </button>`).join('');
+}
+
+function toggleZone(key) {
+  if (activas.has(key)) {
+    if (activas.size <= 1) return; // mínimo 1
+    activas.delete(key);
+  } else {
+    activas.add(key);
+  }
+  renderControls();
+  updateChart();
+}
+
+// ── Init ───────────────────────────────────────────────────────
+renderApreciacion();
+renderControls();
+initChart();
+</script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de proyectos — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="231 proyectos activos en Ciudad de Guatemala con capas de transporte e infraestructura urbana.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+body { overflow: hidden; }
+
+.mapa-wrap {
+  display: flex;
+  height: 100vh;
+  padding-top: var(--nav-h);
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-right: 1.5px solid var(--black);
+  z-index: 10;
+  overflow: hidden;
+  height: 100%;
+}
+
+.proyecto-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sidebar-count {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.sidebar-count-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-500);
+}
+
+.chips-row { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* ── Lista ───────────────────────────────────────────────────── */
+.proyecto-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+
+/* ── Capas ───────────────────────────────────────────────────── */
+.layers-panel {
+  padding: 12px 16px;
+  border-top: var(--border-soft);
+  flex-shrink: 0;
+}
+.layers-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+
+/* ── Mapa ────────────────────────────────────────────────────── */
+#map { flex: 1; position: relative; }
+
+/* ── Responsive mobile: sidebar se vuelve drawer ────────────── */
+@media (max-width: 680px) {
+  .mapa-wrap { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    height: 220px;
+    border-right: none;
+    border-bottom: 1.5px solid var(--black);
+    flex-shrink: 0;
+  }
+  .proyecto-list { display: none; }
+  .layers-panel { display: none; }
+  #map { flex: 1; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Navegación principal">
+  <a class="nav-logo" href="index.html" aria-label="Umbral Lab 1 inicio">
+    ( U ) &nbsp; Lab 1 · Bienes Raíces
+  </a>
+  <div class="nav-modules">
+    <a class="nav-mod active" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span>
+    <span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="mapa-wrap">
+
+  <aside class="sidebar panel" role="complementary" aria-label="Filtros y proyectos">
+
+    <div class="panel-header">
+      <div class="t-eyebrow" style="margin-bottom:10px">Proyectos activos · 2025</div>
+      <div class="sidebar-count" id="count">—</div>
+      <div class="sidebar-count-sub">proyectos visibles</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Segmento</div>
+      <div class="chips-row" id="chips-segmento">
+        <span class="chip" data-seg="$2,000+/m²">$2,000+/m²</span>
+        <span class="chip" data-seg="$1,500–2,000/m²">$1,500–2,000</span>
+        <span class="chip" data-seg="$1,000–1,500/m²">$1,000–1,500</span>
+        <span class="chip" data-seg="Menos de $1,000/m²">&lt;$1,000/m²</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Estado</div>
+      <div class="chips-row" id="chips-estado">
+        <span class="chip" data-estado="YA_ENTREGADO">Entregado</span>
+        <span class="chip" data-estado="ENTREGA_PRONTO">Pronto</span>
+        <span class="chip" data-estado="EN_CONSTRUCCION">En obras</span>
+        <span class="chip" data-estado="PRE_VENTA">Pre-venta</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title" style="margin-bottom:8px">Precio desde (USD)</div>
+      <div class="range-row">
+        <input type="number" id="precio-min" placeholder="Mín" min="0" step="10000">
+        <input type="number" id="precio-max" placeholder="Máx" min="0" step="10000">
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <input type="text" id="busqueda" placeholder="Buscar proyecto...">
+    </div>
+
+    <div class="panel-section" style="padding-top:10px;padding-bottom:10px">
+      <button class="btn-reset" id="btn-reset">Limpiar filtros</button>
+    </div>
+
+    <div class="proyecto-list panel-body" id="proyecto-list" role="list" aria-label="Lista de proyectos"></div>
+
+    <div class="layers-panel">
+      <div class="panel-section-title" style="margin-bottom:8px">Capas</div>
+      <div class="layers-btns">
+        <button class="layer-btn" id="layer-transmetro" aria-pressed="false">
+          <span class="layer-dot" style="background:#3b82f6"></span>Transmetro
+        </button>
+        <button class="layer-btn" id="layer-tubus" aria-pressed="false">
+          <span class="layer-dot" style="background:#22c55e"></span>TuBus
+        </button>
+        <button class="layer-btn" id="layer-aerometro" aria-pressed="false">
+          <span class="layer-dot" style="background:#0891b2"></span>AeroMetro
+        </button>
+        <button class="layer-btn" id="layer-distritos" aria-pressed="false">
+          <span class="layer-dot" style="background:#888"></span>Distritos
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <div id="map" role="main" aria-label="Mapa de proyectos inmobiliarios">
+
+    <div class="loading-overlay" id="loading">
+      <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+      <div class="loading-text">Cargando datos...</div>
+    </div>
+
+    <div class="map-legend" aria-label="Leyenda de segmentos">
+      <div class="legend-title">Precio / m²</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#0a0a0a"></div>$2,000+</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#555"></div>$1,500–2,000</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#888"></div>$1,000–1,500</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#ccc"></div>&lt;$1,000</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Colores monocromáticos para segmentos ─────────────────────
+const SEG_COLORS = {
+  '$2,000+/m²':        '#0a0a0a',
+  '$1,500–2,000/m²':   '#555555',
+  '$1,000–1,500/m²':   '#888888',
+  'Menos de $1,000/m²':'#cccccc',
+  'Sin dato':           '#e0e0e0',
+  '':                   '#e0e0e0',
+};
+
+const SEG_LABEL = s => s || 'Sin dato';
+
+const ESTADO_LABELS = {
+  'YA_ENTREGADO':    'Entregado',
+  'ENTREGA_PRONTO':  'Entrega pronto',
+  'EN_CONSTRUCCION': 'En construcción',
+  'PRE_VENTA':       'Pre-venta',
+};
+
+// ── Estado global ─────────────────────────────────────────────
+const state = {
+  proyectos: [], filtered: [], selectedId: null,
+  filters: { segmentos: new Set(), estados: new Set(), precioMin: 0, precioMax: Infinity, busqueda: '' },
+  layers: { transmetro: false, tubus: false, aerometro: false, distritos: false },
+  infra: null, map: null, popup: null,
+};
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  state.map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        osm: {
+          type: 'raster',
+          tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '© OpenStreetMap contributors, © CARTO',
+          maxzoom: 19
+        }
+      },
+      layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+    },
+    center: [-90.513, 14.634],
+    zoom: 11, minZoom: 9, maxZoom: 18,
+  });
+
+  state.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+  state.popup = new maplibregl.Popup({
+    closeButton: true, closeOnClick: false,
+    maxWidth: '320px', offset: 14,
+  });
+
+  try {
+    const [proyData, infraData] = await Promise.all([
+      fetch('data/proyectos.json').then(r => r.json()),
+      fetch('data/infraestructura.json').then(r => r.json()),
+    ]);
+    state.proyectos = proyData.proyectos;
+    state.infra = infraData;
+    state.filtered = [...state.proyectos];
+
+    state.map.on('load', () => {
+      addProyectosLayer();
+      addInfraLayers();
+      document.getElementById('loading').style.display = 'none';
+      renderLista();
+      updateCount();
+    });
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center;padding:24px;font-size:12px;color:#888;font-family:'Space Grotesk',sans-serif">
+        <div style="font-weight:700;color:#0a0a0a;margin-bottom:8px">Error cargando datos</div>
+        <div>Asegurate de tener Live Server activo<br>y la carpeta /data/ en su lugar.</div>
+      </div>`;
+  }
+}
+
+// ── GeoJSON ───────────────────────────────────────────────────
+function proyectosToGeoJSON(lista) {
+  return {
+    type: 'FeatureCollection',
+    features: lista.map(p => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
+      properties: {
+        id: p.nombre,
+        nombre: p.nombre,
+        segmento: p.segmento || '',
+        estado: p.estado || '',
+        precio_desde: p.precio_desde_usd || 0,
+        precio_hasta: p.precio_hasta_usd || 0,
+        precio_m2: p.precio_m2_mediana_usd || 0,
+        zona: p.zona || 0,
+        ciudad: p.ciudad || '',
+        n_modelos: p.n_modelos || 0,
+        entrega: p.entrega || '',
+        link: p.link || '',
+        modelos: JSON.stringify(p.modelos || []),
+        color: SEG_COLORS[p.segmento] || SEG_COLORS[''],
+      }
+    }))
+  };
+}
+
+// ── Capa proyectos ────────────────────────────────────────────
+function addProyectosLayer() {
+  state.map.addSource('proyectos', { type: 'geojson', data: proyectosToGeoJSON(state.proyectos) });
+
+  state.map.addLayer({
+    id: 'proyectos-halo', type: 'circle', source: 'proyectos',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 20],
+      'circle-color': ['get', 'color'],
+      'circle-opacity': 0.08,
+    }
+  });
+
+  state.map.addLayer({
+    id: 'proyectos-circle', type: 'circle', source: 'proyectos',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 9],
+      'circle-color': ['get', 'color'],
+      'circle-opacity': 1,
+      'circle-stroke-width': 1.5,
+      'circle-stroke-color': '#ffffff',
+    }
+  });
+
+  state.map.on('mouseenter', 'proyectos-circle', () => { state.map.getCanvas().style.cursor = 'pointer'; });
+  state.map.on('mouseleave', 'proyectos-circle', () => { state.map.getCanvas().style.cursor = ''; });
+
+  state.map.on('click', 'proyectos-circle', (e) => {
+    const props = e.features[0].properties;
+    const coords = e.features[0].geometry.coordinates;
+    showPopup(props, coords);
+    selectProyecto(props.id);
+  });
+
+  state.map.on('click', (e) => {
+    const feats = state.map.queryRenderedFeatures(e.point, { layers: ['proyectos-circle'] });
+    if (!feats.length) {
+      state.popup.remove();
+      state.selectedId = null;
+      document.querySelectorAll('.proyecto-item').forEach(el => el.classList.remove('selected'));
+    }
+  });
+}
+
+// ── Popup ─────────────────────────────────────────────────────
+function showPopup(props, coords) {
+  const modelos = JSON.parse(props.modelos || '[]');
+
+  const modelosHTML = modelos.length > 1
+    ? `<div class="popup-modelos">${modelos.map(m => `
+        <div class="popup-modelo">
+          <span class="popup-modelo-lbl">${m.hab ? m.hab + ' hab' : ''}${m.hab && m.area ? ' · ' : ''}${m.area ? m.area + ' m²' : ''}</span>
+          <span class="popup-modelo-val">$${m.precio_usd ? m.precio_usd.toLocaleString() : '—'}</span>
+        </div>`).join('')}</div>` : '';
+
+  const linkHTML = props.link
+    ? `<a class="popup-link" href="${props.link}" target="_blank" rel="noopener"><span>Ver proyecto</span><span>↗</span></a>`
+    : '';
+
+  const estado = ESTADO_LABELS[props.estado] || props.estado || '';
+  const eyebrow = [
+    props.segmento ? SEG_LABEL(props.segmento) : '',
+    estado,
+    props.zona ? `Z${props.zona}` : '',
+  ].filter(Boolean).join(' · ');
+
+  const html = `
+    <div class="popup-inner">
+      <div class="popup-eyebrow">${eyebrow}</div>
+      <div class="popup-title">${props.nombre}</div>
+      <div class="popup-price">$${props.precio_desde ? props.precio_desde.toLocaleString() : '—'}</div>
+      <div class="popup-price-sub">precio desde${props.precio_m2 ? ' · $' + props.precio_m2.toLocaleString() + '/m²' : ''}</div>
+      ${modelosHTML}
+      ${props.entrega ? `<div style="font-size:10px;font-weight:600;color:var(--gray-500);margin-top:8px;text-transform:uppercase;letter-spacing:0.05em">Entrega: ${formatFecha(props.entrega)}</div>` : ''}
+    </div>
+    ${linkHTML}
+  `;
+
+  state.popup.setLngLat(coords).setHTML(html).addTo(state.map);
+}
+
+function formatFecha(s) {
+  if (!s) return '—';
+  try {
+    const d = new Date(s);
+    return d.toLocaleDateString('es-GT', { year: 'numeric', month: 'short' });
+  } catch { return s; }
+}
+
+// ── Lista ─────────────────────────────────────────────────────
+function renderLista() {
+  const list = document.getElementById('proyecto-list');
+  if (!state.filtered.length) {
+    list.innerHTML = `<div style="padding:28px 16px;text-align:center;font-size:11px;color:var(--gray-500);font-weight:500">Sin proyectos con estos filtros.</div>`;
+    return;
+  }
+  list.innerHTML = state.filtered.map(p => `
+    <div class="proyecto-item ${state.selectedId === p.nombre ? 'selected' : ''}"
+         role="listitem"
+         data-id="${encodeURIComponent(p.nombre)}"
+         onclick="flyTo('${encodeURIComponent(p.nombre)}')">
+      <div class="proyecto-nombre">${p.nombre}</div>
+      <div class="proyecto-meta">
+        <span class="proyecto-precio">$${p.precio_desde_usd ? p.precio_desde_usd.toLocaleString() : '—'}</span>
+        ${p.segmento ? `<span class="tag tag-muted" style="font-size:9px">${SEG_LABEL(p.segmento)}</span>` : ''}
+        ${p.zona ? `<span class="proyecto-zona">Z${p.zona}</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function flyTo(encodedId) {
+  const id = decodeURIComponent(encodedId);
+  const p = state.proyectos.find(x => x.nombre === id);
+  if (!p) return;
+  state.map.flyTo({ center: [p.lon, p.lat], zoom: 15, duration: 700 });
+  selectProyecto(id);
+  const props = {
+    id: p.nombre, nombre: p.nombre, segmento: p.segmento || '',
+    estado: p.estado || '', precio_desde: p.precio_desde_usd || 0,
+    precio_m2: p.precio_m2_mediana_usd || 0, zona: p.zona || 0,
+    entrega: p.entrega || '', link: p.link || '',
+    modelos: JSON.stringify(p.modelos || []),
+  };
+  showPopup(props, [p.lon, p.lat]);
+}
+
+function selectProyecto(id) {
+  state.selectedId = id;
+  document.querySelectorAll('.proyecto-item').forEach(el => {
+    const elId = decodeURIComponent(el.dataset.id);
+    el.classList.toggle('selected', elId === id);
+    if (elId === id) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+}
+
+function updateCount() {
+  document.getElementById('count').textContent = state.filtered.length;
+}
+
+// ── Filtros ───────────────────────────────────────────────────
+function applyFilters() {
+  const { segmentos, estados, precioMin, precioMax, busqueda } = state.filters;
+  state.filtered = state.proyectos.filter(p => {
+    if (segmentos.size && !segmentos.has(p.segmento)) return false;
+    if (estados.size && !estados.has(p.estado)) return false;
+    if ((p.precio_desde_usd || 0) < precioMin) return false;
+    if ((p.precio_desde_usd || Infinity) > precioMax) return false;
+    if (busqueda && !p.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false;
+    return true;
+  });
+  if (state.map.getSource('proyectos')) {
+    state.map.getSource('proyectos').setData(proyectosToGeoJSON(state.filtered));
+  }
+  renderLista();
+  updateCount();
+}
+
+document.querySelectorAll('#chips-segmento .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const seg = chip.dataset.seg;
+    if (state.filters.segmentos.has(seg)) { state.filters.segmentos.delete(seg); chip.classList.remove('active'); }
+    else { state.filters.segmentos.add(seg); chip.classList.add('active'); }
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('#chips-estado .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const est = chip.dataset.estado;
+    if (state.filters.estados.has(est)) { state.filters.estados.delete(est); chip.classList.remove('active'); }
+    else { state.filters.estados.add(est); chip.classList.add('active'); }
+    applyFilters();
+  });
+});
+
+let priceTimer;
+document.getElementById('precio-min').addEventListener('input', e => {
+  clearTimeout(priceTimer);
+  priceTimer = setTimeout(() => { state.filters.precioMin = parseInt(e.target.value) || 0; applyFilters(); }, 400);
+});
+document.getElementById('precio-max').addEventListener('input', e => {
+  clearTimeout(priceTimer);
+  priceTimer = setTimeout(() => { state.filters.precioMax = parseInt(e.target.value) || Infinity; applyFilters(); }, 400);
+});
+
+let searchTimer;
+document.getElementById('busqueda').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.filters.busqueda = e.target.value.trim(); applyFilters(); }, 250);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  state.filters = { segmentos: new Set(), estados: new Set(), precioMin: 0, precioMax: Infinity, busqueda: '' };
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('precio-min').value = '';
+  document.getElementById('precio-max').value = '';
+  document.getElementById('busqueda').value = '';
+  applyFilters();
+});
+
+// ── Infraestructura ───────────────────────────────────────────
+function addInfraLayers() {
+  const infra = state.infra;
+  if (!infra) return;
+
+  function mkPopup(html) {
+    return new maplibregl.Popup({ closeButton: false, offset: 8 })
+      .setHTML(`<div style="padding:8px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;background:#fff;border:1.5px solid #0a0a0a;border-radius:8px;max-width:200px">${html}</div>`);
+  }
+
+  // TRANSMETRO
+  if (infra.transmetro) {
+    state.map.addSource('tr-est', {
+      type: 'geojson',
+      data: { type:'FeatureCollection', features: infra.transmetro.estaciones.map(e => ({
+        type:'Feature', geometry:{type:'Point',coordinates:[e.lon,e.lat]},
+        properties:{nombre:e.nombre,linea:e.linea}
+      }))}
+    });
+    state.map.addLayer({ id:'tr-est-l', type:'circle', source:'tr-est', layout:{visibility:'none'},
+      paint:{'circle-radius':5,'circle-color':'#3b82f6','circle-stroke-width':1.5,'circle-stroke-color':'#fff','circle-opacity':0.95}
+    });
+
+    const rutasFeatures = infra.transmetro.rutas.map(r => ({
+      type:'Feature', geometry:{type:'LineString', coordinates: r.coordenadas.map(c=>[c[1],c[0]])},
+      properties:{nombre:r.nombre}
+    }));
+    state.map.addSource('tr-rutas', {type:'geojson',data:{type:'FeatureCollection',features:rutasFeatures}});
+    state.map.addLayer({id:'tr-rutas-l',type:'line',source:'tr-rutas',layout:{visibility:'none'},
+      paint:{'line-color':'#3b82f6','line-width':2,'line-opacity':0.5,'line-dasharray':[4,2]}
+    });
+
+    let trPopup;
+    state.map.on('mouseenter','tr-est-l',e=>{
+      state.map.getCanvas().style.cursor='pointer';
+      const p=e.features[0].properties;
+      trPopup = mkPopup(`<div style="font-weight:700;margin-bottom:2px">${p.nombre}</div><div style="color:#3b82f6;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">${p.linea}</div>`)
+        .setLngLat(e.features[0].geometry.coordinates).addTo(state.map);
+    });
+    state.map.on('mouseleave','tr-est-l',()=>{ state.map.getCanvas().style.cursor=''; if(trPopup) trPopup.remove(); });
+  }
+
+  // TUBUS
+  if (infra.tubus) {
+    state.map.addSource('tubus', {
+      type:'geojson',
+      data:{type:'FeatureCollection',features:infra.tubus.paradas.map(e=>({
+        type:'Feature',geometry:{type:'Point',coordinates:[e.lon,e.lat]},
+        properties:{nombre:e.nombre}
+      }))}
+    });
+    state.map.addLayer({id:'tubus-l',type:'circle',source:'tubus',layout:{visibility:'none'},
+      paint:{'circle-radius':4,'circle-color':'#22c55e','circle-stroke-width':1,'circle-stroke-color':'#fff','circle-opacity':0.85}
+    });
+  }
+
+  // AEROMETRO
+  if (infra.aerometro) {
+    state.map.addSource('aero-est', {
+      type:'geojson',
+      data:{type:'FeatureCollection',features:infra.aerometro.estaciones.map(e=>({
+        type:'Feature',geometry:{type:'Point',coordinates:[e.lon,e.lat]},
+        properties:{nombre:e.nombre,linea:'Línea '+e.linea,transbordo:e.transbordo}
+      }))}
+    });
+    state.map.addLayer({id:'aero-est-l',type:'circle',source:'aero-est',layout:{visibility:'none'},
+      paint:{
+        'circle-radius':['case',['get','transbordo'],8,6],
+        'circle-color':'#0891b2','circle-stroke-width':2,'circle-stroke-color':'#fff','circle-opacity':0.95
+      }
+    });
+
+    const lineasFeatures = infra.aerometro.lineas.map(l=>({
+      type:'Feature',geometry:{type:'LineString',coordinates:l.coordenadas.map(c=>[c[1],c[0]])},
+      properties:{nombre:l.nombre}
+    }));
+    state.map.addSource('aero-lin',{type:'geojson',data:{type:'FeatureCollection',features:lineasFeatures}});
+    state.map.addLayer({id:'aero-lin-l',type:'line',source:'aero-lin',layout:{visibility:'none'},
+      paint:{'line-color':'#0891b2','line-width':3,'line-opacity':0.8}
+    });
+
+    let aeroPopup;
+    state.map.on('mouseenter','aero-est-l',e=>{
+      state.map.getCanvas().style.cursor='pointer';
+      const p=e.features[0].properties;
+      aeroPopup = mkPopup(`
+        <div style="font-weight:700;margin-bottom:2px">${p.nombre}</div>
+        <div style="color:#0891b2;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">${p.linea}${p.transbordo?' · Transbordo Transmetro':''}</div>
+        <div style="color:#aaa;font-size:10px;margin-top:3px;font-weight:500">En construcción · 2027</div>
+      `).setLngLat(e.features[0].geometry.coordinates).addTo(state.map);
+    });
+    state.map.on('mouseleave','aero-est-l',()=>{ state.map.getCanvas().style.cursor=''; if(aeroPopup) aeroPopup.remove(); });
+  }
+
+  // DISTRITOS
+  if (infra.distritos && infra.distritos.items) {
+    const distFeatures = infra.distritos.items.map(d=>({
+      type:'Feature',
+      geometry:{type:'Polygon',coordinates:[d.coordenadas.map(c=>[c[1],c[0]])]},
+      properties:{nombre:d.nombre_corto,descripcion:d.descripcion}
+    }));
+    state.map.addSource('distritos',{type:'geojson',data:{type:'FeatureCollection',features:distFeatures}});
+    state.map.addLayer({id:'distritos-fill',type:'fill',source:'distritos',layout:{visibility:'none'},
+      paint:{'fill-color':'#0a0a0a','fill-opacity':0.06}
+    });
+    state.map.addLayer({id:'distritos-line',type:'line',source:'distritos',layout:{visibility:'none'},
+      paint:{'line-color':'#0a0a0a','line-width':1.5,'line-opacity':0.5,'line-dasharray':[6,3]}
+    });
+    state.map.addLayer({id:'distritos-label',type:'symbol',source:'distritos',
+      layout:{visibility:'none','text-field':['get','nombre'],'text-font':['Open Sans Semibold'],'text-size':11},
+      paint:{'text-color':'#0a0a0a','text-halo-color':'#fff','text-halo-width':2}
+    });
+
+    let distPopup;
+    state.map.on('mouseenter','distritos-fill',e=>{
+      state.map.getCanvas().style.cursor='pointer';
+      const p=e.features[0].properties;
+      distPopup = mkPopup(`
+        <div style="font-weight:700;margin-bottom:4px">${p.nombre}</div>
+        <div style="color:#888;font-size:10px;line-height:1.5;font-weight:500">${p.descripcion}</div>
+      `).setLngLat(e.lngLat).addTo(state.map);
+    });
+    state.map.on('mouseleave','distritos-fill',()=>{ state.map.getCanvas().style.cursor=''; if(distPopup) distPopup.remove(); });
+  }
+}
+
+// ── Toggle capas ──────────────────────────────────────────────
+function toggleLayer(key, layerIds, btnId) {
+  state.layers[key] = !state.layers[key];
+  const vis = state.layers[key] ? 'visible' : 'none';
+  const btn = document.getElementById(btnId);
+  layerIds.forEach(id => { if (state.map.getLayer(id)) state.map.setLayoutProperty(id, 'visibility', vis); });
+  btn.setAttribute('aria-pressed', state.layers[key]);
+  btn.classList.toggle('active', state.layers[key]);
+}
+
+document.getElementById('layer-transmetro').addEventListener('click', () => toggleLayer('transmetro', ['tr-est-l','tr-rutas-l'], 'layer-transmetro'));
+document.getElementById('layer-tubus').addEventListener('click',      () => toggleLayer('tubus',      ['tubus-l'],               'layer-tubus'));
+document.getElementById('layer-aerometro').addEventListener('click',  () => toggleLayer('aerometro',  ['aero-est-l','aero-lin-l'],'layer-aerometro'));
+document.getElementById('layer-distritos').addEventListener('click',  () => toggleLayer('distritos',  ['distritos-fill','distritos-line','distritos-label'],'layer-distritos'));
+
+init();
+</script>
+</body>
+</html>

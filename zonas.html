@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de zonas — ( UMBRAL ) Lab 1</title>
+<meta name="description" content="Radar de 6 dimensiones y datos de mercado por zona de Ciudad de Guatemala.">
+<link rel="stylesheet" href="assets/umbral-style.css">
+<style>
+.z-wrap { padding-top: var(--nav-h); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.z-hero { padding: 40px 40px 28px; border-bottom: var(--border-soft); }
+.z-eyebrow { font-size:10px; font-weight:600; color:var(--gray-500); letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.z-eyebrow::before { content:''; width:20px; height:1.5px; background:var(--black); }
+.z-title { font-size:clamp(26px,3.5vw,40px); font-weight:700; letter-spacing:-0.03em; line-height:1.05; margin-bottom:10px; }
+.z-sub { font-size:13px; color:var(--gray-700); line-height:1.7; max-width:520px; }
+
+/* ── Selector de zona ─────────────────────────────────────────── */
+.z-selector {
+  padding: 20px 40px;
+  border-bottom: var(--border-soft);
+  flex-shrink: 0;
+}
+.z-selector-label {
+  font-size:10px; font-weight:700; color:var(--gray-500);
+  letter-spacing:0.07em; text-transform:uppercase; margin-bottom:12px;
+}
+.z-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.z-chip {
+  padding: 6px 12px; font-size:11px; font-weight:700;
+  border: 1.5px solid var(--gray-300); border-radius:var(--radius-sm);
+  cursor:pointer; color:var(--gray-500); background:var(--white);
+  transition:var(--trans); letter-spacing:0.02em;
+}
+.z-chip:hover { border-color:var(--gray-500); color:var(--black); }
+.z-chip.active { border-color:var(--black); color:var(--black); background:var(--gray-100); }
+
+/* ── Body dos columnas ────────────────────────────────────────── */
+.z-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  overflow: hidden;
+}
+
+/* ── Panel izquierdo ──────────────────────────────────────────── */
+.z-left {
+  border-right: var(--border-soft);
+  display: flex; flex-direction: column;
+  overflow-y: auto; padding: 28px 24px;
+  gap: 24px;
+}
+
+.z-zona-nombre { font-size:32px; font-weight:700; letter-spacing:-0.03em; line-height:1; margin-bottom:4px; }
+.z-zona-alias  { font-size:15px; font-weight:300; color:var(--gray-600); margin-bottom:16px; }
+.z-zona-score  {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 8px 14px; border: var(--border-strong); border-radius:var(--radius-sm);
+  margin-bottom: 20px;
+}
+.z-zona-score-num { font-size:24px; font-weight:700; letter-spacing:-0.02em; }
+.z-zona-score-den { font-size:12px; color:var(--gray-500); font-weight:500; }
+.z-zona-score-lbl { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.05em; text-transform:uppercase; margin-left:4px; }
+
+/* KPIs de mercado */
+.z-kpis { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--gray-300); border:1px solid var(--gray-300); border-radius:var(--radius-md); overflow:hidden; }
+.z-kpi { background:var(--white); padding:12px 14px; }
+.z-kpi-val { font-size:18px; font-weight:700; letter-spacing:-0.02em; line-height:1; border-bottom:1.5px solid var(--gray-300); display:inline-block; padding-bottom:2px; }
+.z-kpi-lbl { font-size:9px; font-weight:700; color:var(--gray-500); letter-spacing:0.06em; text-transform:uppercase; margin-top:5px; }
+
+/* Amenidades */
+.z-amenidades { display:flex; flex-wrap:wrap; gap:5px; }
+.z-amen-tag {
+  padding:3px 8px; font-size:10px; font-weight:600;
+  letter-spacing:0.03em; border:1px solid var(--gray-300);
+  border-radius:4px; color:var(--gray-600);
+}
+
+/* Perfil */
+.z-perfil { background:var(--gray-100); border-radius:var(--radius-md); padding:14px 16px; }
+.z-perfil-label { font-size:9px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:6px; }
+.z-perfil-text { font-size:12px; color:var(--gray-700); line-height:1.6; }
+.z-perfil-no { font-size:11px; color:var(--gray-500); margin-top:8px; font-style:italic; }
+
+/* CTA a página web */
+.z-cta {
+  border: 1.5px solid var(--black); border-radius:var(--radius-lg);
+  padding: 16px; background: var(--black); color: var(--white);
+}
+.z-cta-label { font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#555; margin-bottom:8px; }
+.z-cta-text { font-size:12px; color:#aaa; line-height:1.6; margin-bottom:12px; }
+.z-cta-btn {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; background:var(--white); color:var(--black);
+  font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+  border-radius:var(--radius-sm); text-decoration:none; transition:var(--trans);
+}
+.z-cta-btn:hover { opacity:0.85; }
+
+/* ── Panel derecho ────────────────────────────────────────────── */
+.z-right {
+  overflow-y: auto; padding: 28px 32px;
+  display: flex; flex-direction: column; gap: 28px;
+}
+
+/* Radar */
+.z-radar-wrap {
+  background: var(--gray-100); border-radius:var(--radius-lg);
+  padding: 24px; display:flex; flex-direction:column; align-items:center;
+}
+.z-radar-title { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:20px; align-self:flex-start; }
+#radar-svg { width:100%; max-width:340px; }
+
+/* Tabla de dimensiones */
+.z-dims { }
+.z-dims-title { font-size:10px; font-weight:700; color:var(--gray-500); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:12px; padding-bottom:8px; border-bottom:var(--border-strong); }
+.z-dim-row {
+  display:grid; grid-template-columns:140px 1fr 36px;
+  gap:12px; padding:10px 0; border-bottom:var(--border-muted);
+  align-items:center;
+}
+.z-dim-row:last-child { border-bottom:none; }
+.z-dim-name { font-size:12px; font-weight:600; }
+.z-dim-bar { height:6px; background:var(--gray-200); border-radius:3px; overflow:hidden; }
+.z-dim-fill { height:100%; border-radius:3px; transition:width 0.4s ease; }
+.z-dim-val {
+  font-size:12px; font-weight:700; text-align:right;
+  padding:2px 6px; border-radius:4px;
+}
+
+/* Tonos por puntaje — monocromático */
+.score-1, .score-2, .score-3, .score-4 {
+  background: #f0f0f0; color: #aaa;
+}
+.score-5, .score-6 {
+  background: #e0e0e0; color: #666;
+}
+.score-7, .score-8 {
+  background: #555; color: #fff;
+}
+.score-9, .score-10 {
+  background: #0a0a0a; color: #fff;
+}
+
+/* Colores de barra */
+.bar-1,.bar-2,.bar-3,.bar-4 { background: #ddd; }
+.bar-5,.bar-6 { background: #aaa; }
+.bar-7,.bar-8 { background: #555; }
+.bar-9,.bar-10 { background: #0a0a0a; }
+
+/* Escala de referencia */
+.z-scale {
+  display:flex; align-items:center; gap:0;
+  border:1px solid var(--gray-300); border-radius:var(--radius-sm);
+  overflow:hidden; margin-top:8px;
+}
+.z-scale-item {
+  flex:1; padding:6px 4px; text-align:center;
+  font-size:9px; font-weight:700; letter-spacing:0.03em;
+}
+.sc-low  { background:#f0f0f0; color:#aaa; }
+.sc-mid  { background:#e0e0e0; color:#666; }
+.sc-high { background:#555;    color:#fff; }
+.sc-top  { background:#0a0a0a; color:#fff; }
+
+/* ── Placeholder ──────────────────────────────────────────────── */
+.z-placeholder {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; height:100%; text-align:center;
+  color:var(--gray-400); gap:14px; padding:40px;
+}
+.z-placeholder-icon { font-size:28px; opacity:0.3; }
+.z-placeholder-text { font-size:13px; font-weight:500; line-height:1.6; max-width:280px; }
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.z-footer { background:var(--black); padding:28px 40px; flex-shrink:0; }
+.z-footer-headline { font-size:20px; font-weight:700; color:var(--white); letter-spacing:-0.02em; margin-bottom:6px; }
+.z-footer-sub { font-size:12px; color:#555; font-style:italic; margin-bottom:20px; }
+.z-footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #1e1e1e; flex-wrap:wrap; gap:10px; }
+.z-footer-meta { font-size:11px; color:#555; font-weight:500; }
+.z-footer-link { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--white); color:var(--black); font-size:11px; font-weight:500; border-radius:var(--radius-md); text-decoration:none; }
+
+@media (max-width:780px) {
+  .z-body { grid-template-columns:1fr; }
+  .z-right { padding: 20px; }
+  .z-left { padding: 20px; border-right:none; border-bottom:var(--border-soft); }
+  .z-hero { padding:28px 20px 20px; }
+  .z-selector { padding:16px 20px; }
+  .z-footer { padding:24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation">
+  <a class="nav-logo" href="index.html">( U ) &nbsp; Lab 1 · Bienes Raíces</a>
+  <div class="nav-modules">
+    <a class="nav-mod" href="mapa.html">Mapa</a>
+    <a class="nav-mod" href="heatmap.html">Heatmap</a>
+    <a class="nav-mod" href="calcular.html">Calcular</a>
+    <a class="nav-mod" href="checklist.html">Checklist</a>
+    <a class="nav-mod active" href="zonas.html">Zonas</a>
+    <a class="nav-mod" href="datos.html">Datos</a>
+    <a class="nav-mod" href="precio.html">Precio justo</a>
+    <a class="nav-mod" href="perfil.html">Mi perfil</a>
+    <a class="nav-mod" href="estafas.html">Alertas</a>
+  </div>
+  <a class="nav-back" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+    <span>←</span><span>umbralgt.com</span>
+  </a>
+</nav>
+
+<div class="z-wrap">
+
+  <div class="z-hero">
+    <div class="z-eyebrow">Herramienta · Análisis de zonas</div>
+    <h1 class="z-title">Las zonas de Ciudad de Guatemala.</h1>
+    <p class="z-sub">Datos de mercado y calificación en 6 dimensiones por zona. Los números rápidos acá — el contexto, la narrativa y el análisis completo en umbralgt.com.</p>
+  </div>
+
+  <!-- Selector -->
+  <div class="z-selector">
+    <div class="z-selector-label">Seleccioná una zona</div>
+    <div class="z-chips" id="z-chips"></div>
+  </div>
+
+  <!-- Body -->
+  <div class="z-body">
+
+    <!-- Panel izquierdo -->
+    <div class="z-left" id="z-left">
+      <div class="z-placeholder">
+        <div class="z-placeholder-icon">◑</div>
+        <div class="z-placeholder-text">Seleccioná una zona arriba para ver su análisis.</div>
+      </div>
+    </div>
+
+    <!-- Panel derecho -->
+    <div class="z-right" id="z-right">
+      <div class="z-placeholder">
+        <div class="z-placeholder-icon">◉</div>
+        <div class="z-placeholder-text">El radar de 6 dimensiones y el detalle de cada área aparecen al seleccionar una zona.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="z-footer">
+    <div class="z-footer-headline">explorar. contrastar. decidir.</div>
+    <div class="z-footer-sub">Per experimentum.</div>
+    <div class="z-footer-bottom">
+      <span class="z-footer-meta">( UMBRAL ) · Ciudad de Guatemala · 2025–2027</span>
+      <a class="z-footer-link" href="https://www.umbralgt.com" target="_blank" rel="noopener">
+        <span>umbralgt.com</span><span>↗</span>
+      </a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// UMBRAL Lab 1 — Módulo Análisis de Zonas
+// ══════════════════════════════════════════════════════════════
+
+const DIMS = [
+  { key:'conectividad', label:'Conectividad y movilidad' },
+  { key:'inversion',    label:'Potencial de inversión' },
+  { key:'regulaciones', label:'Regulaciones y permisos' },
+  { key:'precios',      label:'Precios y accesibilidad' },
+  { key:'seguridad',    label:'Seguridad' },
+  { key:'calidad',      label:'Calidad de vida y ambiente' },
+];
+
+let zonas = null;
+let zonaActiva = null;
+
+// ── Cargar datos ───────────────────────────────────────────────
+async function init() {
+  const res = await fetch('data/zonas.json');
+  zonas = await res.json();
+  renderChips();
+}
+
+// ── Chips de selección ─────────────────────────────────────────
+function renderChips() {
+  const container = document.getElementById('z-chips');
+  const sorted = Object.values(zonas).sort((a,b) => a.zona_num - b.zona_num);
+  container.innerHTML = sorted.map(z => `
+    <button class="z-chip" data-key="zona_${String(z.zona_num).padStart(2,'0')}"
+      onclick="selectZona('zona_${String(z.zona_num).padStart(2,'0')}')">
+      Z${z.zona_num}
+    </button>`).join('');
+}
+
+// ── Seleccionar zona ───────────────────────────────────────────
+function selectZona(key) {
+  zonaActiva = key;
+  document.querySelectorAll('.z-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.key === key);
+  });
+  const z = zonas[key];
+  if (!z) return;
+  renderLeft(z);
+  renderRight(z);
+}
+
+// ── Panel izquierdo ────────────────────────────────────────────
+function renderLeft(z) {
+  const m = z.mercado || {};
+  const fmt = v => v ? '$' + Number(v).toLocaleString() : '—';
+  const fmtPct = v => v ? v + '%' : '—';
+
+  const amens = [];
+  if (m.pct_piscina >= 20)   amens.push(`Piscina ${m.pct_piscina}%`);
+  if (m.pct_gimnasio >= 20)  amens.push(`Gimnasio ${m.pct_gimnasio}%`);
+  if (m.pct_seguridad >= 30) amens.push(`Seguridad ${m.pct_seguridad}%`);
+
+  document.getElementById('z-left').innerHTML = `
+
+    <div>
+      <div class="z-zona-nombre">Zona ${z.zona_num}</div>
+      <div class="z-zona-alias">${z.alias}</div>
+      <div class="z-zona-score">
+        <span class="z-zona-score-num">${z.scores.total}</span>
+        <span class="z-zona-score-den">/ 10</span>
+        <span class="z-zona-score-lbl">Puntaje Umbral</span>
+      </div>
+    </div>
+
+    ${m.precio_venta_mediana_usd ? `
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--gray-500);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:10px">Datos del mercado · 2025</div>
+      <div class="z-kpis">
+        <div class="z-kpi">
+          <div class="z-kpi-val">${fmt(m.precio_venta_mediana_usd)}</div>
+          <div class="z-kpi-lbl">Venta mediana</div>
+        </div>
+        <div class="z-kpi">
+          <div class="z-kpi-val">${fmt(m.precio_m2_mediana_usd)}/m²</div>
+          <div class="z-kpi-lbl">Precio / m²</div>
+        </div>
+        <div class="z-kpi">
+          <div class="z-kpi-val">${fmt(m.renta_mediana_usd)}/mes</div>
+          <div class="z-kpi-lbl">Renta mediana</div>
+        </div>
+        <div class="z-kpi">
+          <div class="z-kpi-val">${fmtPct(m.yield_bruto_pct)}</div>
+          <div class="z-kpi-lbl">Yield bruto</div>
+        </div>
+      </div>
+      ${m.area_mediana_m2 ? `
+      <div style="margin-top:8px;font-size:11px;color:var(--gray-500);font-weight:500">
+        Área mediana ${m.area_mediana_m2} m²
+        ${m.hab_frecuentes ? `· ${m.hab_frecuentes} habitaciones más frecuentes` : ''}
+        · ${m.n_venta || 0} registros de venta
+      </div>` : ''}
+    </div>` : `
+    <div style="font-size:12px;color:var(--gray-500);font-style:italic">
+      Sin datos de mercado disponibles para esta zona.
+    </div>`}
+
+    ${amens.length ? `
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--gray-500);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px">Amenidades frecuentes</div>
+      <div class="z-amenidades">
+        ${amens.map(a => `<span class="z-amen-tag">${a}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="z-perfil">
+      <div class="z-perfil-label">Perfil típico</div>
+      <div class="z-perfil-text">${z.perfil}</div>
+      ${z.no_recomendado ? `
+      <div class="z-perfil-no">No recomendado para: ${z.no_recomendado}</div>` : ''}
+    </div>
+
+    <div class="z-cta">
+      <div class="z-cta-label">Análisis completo</div>
+      <div class="z-cta-text">Los números están acá. El contexto, la narrativa, la historia de la zona y el análisis editorial completo están en la página web de ( UMBRAL ).</div>
+      <a class="z-cta-btn" href="${z.url_umbral}" target="_blank" rel="noopener">
+        <span>Ver análisis de Zona ${z.zona_num}</span>
+        <span>↗</span>
+      </a>
+    </div>
+  `;
+}
+
+// ── Panel derecho — radar + tabla ──────────────────────────────
+function renderRight(z) {
+  const s = z.scores;
+
+  document.getElementById('z-right').innerHTML = `
+    <div class="z-radar-wrap">
+      <div class="z-radar-title">Puntaje Umbral — 6 dimensiones</div>
+      ${buildRadarSVG(s)}
+    </div>
+
+    <div class="z-dims">
+      <div class="z-dims-title">Detalle por dimensión</div>
+      ${DIMS.map(d => {
+        const val = s[d.key];
+        const scoreClass = `score-${val}`;
+        const barClass   = `bar-${val}`;
+        return `
+        <div class="z-dim-row">
+          <div class="z-dim-name">${d.label}</div>
+          <div class="z-dim-bar">
+            <div class="z-dim-fill ${barClass}" style="width:${val*10}%"></div>
+          </div>
+          <div class="z-dim-val ${scoreClass}">${val}</div>
+        </div>`;
+      }).join('')}
+
+      <div class="z-scale" style="margin-top:16px">
+        <div class="z-scale-item sc-low">1–4<br>Débil</div>
+        <div class="z-scale-item sc-mid">5–6<br>Promedio</div>
+        <div class="z-scale-item sc-high">7–8<br>Bueno</div>
+        <div class="z-scale-item sc-top">9–10<br>Destacado</div>
+      </div>
+
+      <div style="margin-top:14px;font-size:11px;color:var(--gray-500);line-height:1.7;font-weight:500">
+        Las calificaciones son orientativas y no establecen un ranking entre zonas. Cada zona tiene su propio perfil, contexto y tipo de usuario. Para el análisis completo con narrativa, historia y recomendaciones de micro-ubicación →
+        <a href="${z.url_umbral}" target="_blank" rel="noopener"
+          style="color:var(--black);font-weight:700;text-decoration:none;border-bottom:1px solid var(--black)">
+          umbralgt.com ↗
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+// ── Radar SVG ──────────────────────────────────────────────────
+function buildRadarSVG(scores) {
+  const cx = 170, cy = 155, R = 110;
+  const n = DIMS.length;
+  const labels = DIMS.map(d => d.label);
+  const vals = DIMS.map(d => scores[d.key] / 10);
+
+  function polarToXY(angle, r) {
+    const rad = (angle - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  // Grid circles
+  let gridCircles = '';
+  for (let i = 1; i <= 5; i++) {
+    const r = R * i / 5;
+    gridCircles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8e8e8" stroke-width="1"/>`;
+  }
+
+  // Grid lines (axes)
+  let axisLines = '';
+  for (let i = 0; i < n; i++) {
+    const angle = i * 360 / n;
+    const p = polarToXY(angle, R);
+    axisLines += `<line x1="${cx}" y1="${cy}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="#e8e8e8" stroke-width="1"/>`;
+  }
+
+  // Data polygon
+  let polyPoints = '';
+  for (let i = 0; i < n; i++) {
+    const angle = i * 360 / n;
+    const p = polarToXY(angle, R * vals[i]);
+    polyPoints += `${p.x.toFixed(1)},${p.y.toFixed(1)} `;
+  }
+
+  // Data dots
+  let dots = '';
+  for (let i = 0; i < n; i++) {
+    const angle = i * 360 / n;
+    const p = polarToXY(angle, R * vals[i]);
+    dots += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#0a0a0a" stroke="white" stroke-width="1.5"/>`;
+  }
+
+  // Labels
+  let labelEls = '';
+  for (let i = 0; i < n; i++) {
+    const angle = i * 360 / n;
+    const p = polarToXY(angle, R + 22);
+    const parts = labels[i].split(' ');
+    const line1 = parts[0];
+    const line2 = parts.slice(1).join(' ');
+    const anchor = p.x < cx - 5 ? 'end' : p.x > cx + 5 ? 'start' : 'middle';
+    labelEls += `<text x="${p.x.toFixed(1)}" y="${(p.y - (line2 ? 6 : 0)).toFixed(1)}" text-anchor="${anchor}" font-family="Space Grotesk, sans-serif" font-size="10" font-weight="600" fill="#555">${line1}</text>`;
+    if (line2) {
+      labelEls += `<text x="${p.x.toFixed(1)}" y="${(p.y + 8).toFixed(1)}" text-anchor="${anchor}" font-family="Space Grotesk, sans-serif" font-size="10" font-weight="600" fill="#555">${line2}</text>`;
+    }
+  }
+
+  // Score labels on axes
+  let scoreLabels = '';
+  const scoreSteps = [2, 4, 6, 8, 10];
+  scoreSteps.forEach(v => {
+    const r = R * v / 10;
+    scoreLabels += `<text x="${cx + 3}" y="${cy - r + 4}" font-family="Space Grotesk, sans-serif" font-size="8" fill="#aaa" text-anchor="start">${v}</text>`;
+  });
+
+  return `
+    <svg id="radar-svg" viewBox="0 0 340 300" xmlns="http://www.w3.org/2000/svg">
+      ${gridCircles}
+      ${axisLines}
+      <polygon points="${polyPoints.trim()}" fill="#0a0a0a" fill-opacity="0.1" stroke="#0a0a0a" stroke-width="2" stroke-linejoin="round"/>
+      ${scoreLabels}
+      ${dots}
+      ${labelEls}
+    </svg>`;
+}
+
+init();
+</script>
+</body>
+</html>

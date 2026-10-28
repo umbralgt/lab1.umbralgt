@@ -400,27 +400,8 @@ function getModoChoropletColor(modo) {
 async function init() {
   state.map = new maplibregl.Map({
     container: 'map',
-    style: {
-      version: 8,
-      // Mapa base gris claro sin API key (Esri Light Gray: base + etiquetas)
-      sources: {
-        base: {
-          type: 'raster',
-          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
-          tileSize: 256, maxzoom: 16,
-          attribution: '© Esri, © OpenStreetMap contributors'
-        },
-        labels: {
-          type: 'raster',
-          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
-          tileSize: 256, maxzoom: 16
-        }
-      },
-      layers: [
-        { id: 'base',   type: 'raster', source: 'base' },
-        { id: 'labels', type: 'raster', source: 'labels' }
-      ]
-    },
+    // Mapa base gris claro sin API key (OpenFreeMap Positron, igual que POT/Cercanía)
+    style: 'https://tiles.openfreemap.org/styles/positron',
     center: [-90.513, 14.634],
     zoom: 11, minZoom: 9, maxZoom: 17,
   });
@@ -555,7 +536,7 @@ function addChoropletLayer() {
     id: 'choroplet-label', type: 'symbol', source: 'choroplet',
     layout: {
       'text-field': ['concat', 'Z', ['to-string', ['get', 'zona_num']]],
-      'text-font': ['Open Sans Bold'],
+      'text-font': ['Noto Sans Regular'],
       'text-size': 11,
     },
     paint: {

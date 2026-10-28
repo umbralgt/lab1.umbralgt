@@ -255,20 +255,28 @@ async function init() {
   });
 
   state.map.on('load', async () => {
+    // 1) esperar datos — si fallan, mostrar error claro
     try {
       await dataReady;
-      addProyectosLayer();
-      addInfraLayers();
-      document.getElementById('loading').style.display = 'none';
-      renderLista();
-      updateCount();
     } catch(e) {
       document.getElementById('loading').innerHTML = `
         <div style="text-align:center;padding:24px;font-size:12px;color:#888;font-family:'Space Grotesk',sans-serif">
           <div style="font-weight:700;color:#0a0a0a;margin-bottom:8px">Error cargando datos</div>
           <div>Verificá que la carpeta /data/ esté subida junto al HTML.</div>
         </div>`;
+      return;
     }
+    // 2) dibujar capas — si alguna falla, se registra pero NO se traba el mapa
+    try {
+      addProyectosLayer();
+      addInfraLayers();
+      renderLista();
+      updateCount();
+    } catch(e) {
+      console.error('Aviso al dibujar capas:', e);
+    }
+    // 3) quitar el "Cargando datos" SIEMPRE
+    document.getElementById('loading').style.display = 'none';
   });
 }
 

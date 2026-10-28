@@ -402,12 +402,24 @@ async function init() {
     container: 'map',
     style: {
       version: 8,
-      sources: { osm: {
-        type: 'raster',
-        tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
-        tileSize: 256, maxzoom: 19
-      }},
-      layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+      // Mapa base gris claro sin API key (Esri Light Gray: base + etiquetas)
+      sources: {
+        base: {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256, maxzoom: 16,
+          attribution: '© Esri, © OpenStreetMap contributors'
+        },
+        labels: {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256, maxzoom: 16
+        }
+      },
+      layers: [
+        { id: 'base',   type: 'raster', source: 'base' },
+        { id: 'labels', type: 'raster', source: 'labels' }
+      ]
     },
     center: [-90.513, 14.634],
     zoom: 11, minZoom: 9, maxZoom: 17,

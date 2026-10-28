@@ -232,16 +232,24 @@ async function init() {
     container: 'map',
     style: {
       version: 8,
+      // Mapa base gris claro sin API key (Esri Light Gray: base + etiquetas)
       sources: {
-        osm: {
+        base: {
           type: 'raster',
-          tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '© OpenStreetMap contributors, © CARTO',
-          maxzoom: 19
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256, maxzoom: 16,
+          attribution: '© Esri, © OpenStreetMap contributors'
+        },
+        labels: {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256, maxzoom: 16
         }
       },
-      layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+      layers: [
+        { id: 'base',   type: 'raster', source: 'base' },
+        { id: 'labels', type: 'raster', source: 'labels' }
+      ]
     },
     center: [-90.513, 14.634],
     zoom: 11, minZoom: 9, maxZoom: 18,
@@ -365,6 +373,11 @@ function showPopup(props, coords) {
     ? `<a class="popup-link" href="${props.link}" target="_blank" rel="noopener"><span>Ver proyecto</span><span>↗</span></a>`
     : '';
 
+  // Puente con la herramienta de Cercanía (15 min) — usa las coordenadas del proyecto
+  const cercaUrl = ('https://cercania.umbralgt.com/?lon=' + coords[0] + '&lat=' + coords[1]
+    + '&nombre=' + encodeURIComponent(props.nombre || '') + '&from=Lab%201').replace(/'/g, '%27');
+  const cercaHTML = `<a class="popup-link" href="${cercaUrl}" target="_blank" rel="noopener" style="background:#f07820;color:#fff;border-color:#f07820"><span>📍 Ver cercanía · 15 min</span><span>↗</span></a>`;
+
   const estado = ESTADO_LABELS[props.estado] || props.estado || '';
   const eyebrow = [
     props.segmento ? SEG_LABEL(props.segmento) : '',
@@ -382,6 +395,7 @@ function showPopup(props, coords) {
       ${props.entrega ? `<div style="font-size:10px;font-weight:600;color:var(--gray-500);margin-top:8px;text-transform:uppercase;letter-spacing:0.05em">Entrega: ${formatFecha(props.entrega)}</div>` : ''}
     </div>
     ${linkHTML}
+    ${cercaHTML}
   `;
 
   state.popup.setLngLat(coords).setHTML(html).addTo(state.map);

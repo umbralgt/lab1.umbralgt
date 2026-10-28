@@ -262,29 +262,33 @@ async function init() {
     maxWidth: '320px', offset: 14,
   });
 
-  try {
-    const [proyData, infraData] = await Promise.all([
-      fetch('data/proyectos.json').then(r => r.json()),
-      fetch('data/infraestructura.json').then(r => r.json()),
-    ]);
+  // Empezar a bajar los datos YA, y registrar 'load' ANTES de esperarlos
+  // (evita la carrera que dejaba el mapa en "Cargando datos…" en GitHub).
+  const dataReady = Promise.all([
+    fetch('data/proyectos.json').then(r => r.json()),
+    fetch('data/infraestructura.json').then(r => r.json()),
+  ]).then(([proyData, infraData]) => {
     state.proyectos = proyData.proyectos;
     state.infra = infraData;
     state.filtered = [...state.proyectos];
+  });
 
-    state.map.on('load', () => {
+  state.map.on('load', async () => {
+    try {
+      await dataReady;
       addProyectosLayer();
       addInfraLayers();
       document.getElementById('loading').style.display = 'none';
       renderLista();
       updateCount();
-    });
-  } catch(e) {
-    document.getElementById('loading').innerHTML = `
-      <div style="text-align:center;padding:24px;font-size:12px;color:#888;font-family:'Space Grotesk',sans-serif">
-        <div style="font-weight:700;color:#0a0a0a;margin-bottom:8px">Error cargando datos</div>
-        <div>Asegurate de tener Live Server activo<br>y la carpeta /data/ en su lugar.</div>
-      </div>`;
-  }
+    } catch(e) {
+      document.getElementById('loading').innerHTML = `
+        <div style="text-align:center;padding:24px;font-size:12px;color:#888;font-family:'Space Grotesk',sans-serif">
+          <div style="font-weight:700;color:#0a0a0a;margin-bottom:8px">Error cargando datos</div>
+          <div>Verificá que la carpeta /data/ esté subida junto al HTML.</div>
+        </div>`;
+    }
+  });
 }
 
 // ── GeoJSON ───────────────────────────────────────────────────
